@@ -7,19 +7,15 @@
 #include <string.h>
 #include <windows.h>
 
+#include "Config.h"
 #include "Controller.h"
 #include "Map.h"
 
 #define sq(x) ((x)*(x))
 
 
-const int screenW = 80, screenH = 25, screenWh = screenW / 2, screenHh = screenH / 2;
-const int around = 6 * screenW, aroundh = around / 2, aroundq = around / 4; //FOV = 60 degs (6 FOVs = 360 degrees)
-char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
-
-const int sqSide = 128; //must be the side of Texture
 const int mapSizeHeight = mapHeight * sqSide, mapSizeWidth = mapWidth * sqSide;
-
+char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
 char Texture[sqSide*sqSide];
 
 const int TanFixPoint = 7;
@@ -28,7 +24,7 @@ int cTan_fp[around];
 
 //initial viewer current position and orientation
 int xC = int(2.5f * sqSide);
-int yC = int(mapHeight - 2.5f) * sqSide; //flip vertically
+int yC = int(2.5f) * sqSide; //flip vertically
 int angleC = 1400;
 
 float X2Rad(int X) {
@@ -61,14 +57,6 @@ bool init() {
         else
             cTan_fp[a] = (int)temp;
     }
-
-    //vertically mirror the map (it's more natural to edit it this way)
-    for (i = 0; i < mapHeight/2; i++)
-        for (j = 0; j < mapWidth; j++) {
-            int aux = Map[i][j];
-            Map[i][j] = Map[mapHeight - 1 - i][j];
-            Map[mapHeight - 1 - i][j] = aux;
-        }
 
     //load texture
     FILE* pF = fopen("diamond.txt", "r");
@@ -154,6 +142,9 @@ int CastY(int ang, int* xS, int* yS) { //   hit horizontal walls ==
 }
 
 void RenderColumn(int col, int h, int textureColumn) {
+#ifdef INVERT_COORDINATE_SYSTEM
+	col = screenW - 1 - col;
+#endif
     int Dh_fp = (sqSide << 10) / h; //1 row in screen space is this many rows in texture space; 10 bits fixed point
     int textureRow_fp = 0;
     int minY = screenHh - h / 2;

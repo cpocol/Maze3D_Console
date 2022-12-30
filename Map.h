@@ -16,7 +16,6 @@ int Map[][14] = {
 {11,  0,  0,  0, 11,  0,  0,  0,  0,  0,  0,  0,  0, 11},
 {11,  0,  0,  0, 11,  0,  0,  0,  0,  0,  0,  0,  0, 11},
 {11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11},
-//^ origin will be here because the map is verically flipped by the implementation
 };
 
 const int mapWidth = sizeof(Map[0])/sizeof(Map[0][0]);
