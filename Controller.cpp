@@ -14,7 +14,12 @@ void loopController(int& x, int& y, int& angle, int around)
 #endif
 
     float rad = angle * 6.2831f / around;
-    if (_kbhit()) { //check user's input
+
+#ifndef CONTINUOUS_RENDERING
+	while (!_kbhit());
+#endif
+
+	if (_kbhit()) { //check user's input
         unsigned char ch = _getch();
         if (ch == 27) //ASCII code for the Esc key
             exit(0); //end the game

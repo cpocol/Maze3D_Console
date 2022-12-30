@@ -1,5 +1,6 @@
 # Maze3D_Console (ray casting)
 3D rendering in console:
+
 ![Snapshot](/Snapshot.png)
 
 Prepared to be opened with:

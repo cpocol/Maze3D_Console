@@ -22,10 +22,10 @@ const int TanFixPoint = 7;
 int Tan_fp[around]; //TanFixPoint bits fixed point
 int cTan_fp[around];
 
-//initial viewer current position and orientation
+//initial viewer Current position and orientation
 int xC = int(2.5f * sqSide);
-int yC = int(2.5f) * sqSide; //flip vertically
-int angleC = 1400;
+int yC = int(2.5f * sqSide);
+int angleC = 10;
 
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
@@ -39,23 +39,19 @@ bool init() {
 
         //tangent (theoretical range is [-inf..+inf], in practice (-128..+128) is fine)
         float temp = tanf(angf) * (1 << TanFixPoint);
+        Tan_fp[a] = (int)temp;
         if (temp > (128 << TanFixPoint) - 1)
             Tan_fp[a] = (128 << TanFixPoint) - 1;
-        else
         if (temp < (-128 << TanFixPoint) + 1)
             Tan_fp[a] = (-128 << TanFixPoint) + 1;
-        else
-            Tan_fp[a] = (int)temp;
 
         //cotangent
         temp = 1 / tanf(angf) * (1 << TanFixPoint);
+        cTan_fp[a] = (int)temp;
         if (temp > 128 * (1 << TanFixPoint) - 1)
             cTan_fp[a] = 128 * (1 << TanFixPoint) - 1;
-        else
         if (temp < -128 * (1 << TanFixPoint) + 1)
             cTan_fp[a] = -128 * (1 << TanFixPoint) + 1;
-        else
-            cTan_fp[a] = (int)temp;
     }
 
     //load texture
