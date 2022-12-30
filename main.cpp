@@ -71,7 +71,7 @@ bool init() {
 		}
 
     //load texture
-    FILE* pF = fopen("diamond1.txt", "r");
+    FILE* pF = fopen("diamond.txt", "r");
     if (!pF) {
         printf("Texture file can't be open\n");
         return false;
