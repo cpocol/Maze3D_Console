@@ -32,43 +32,43 @@ int yC = int(mapHeight - 2.5f) * sqSide; //flip vertically
 int angleC = 1400;
 
 float X2Rad(int X) {
-	return X * 3.1415f / aroundh;
+    return X * 3.1415f / aroundh;
 }
 
 bool init() {
-	int i, j;
-	//precalculate
-	for (int a = 0; a < around; a++) {
-		float angf = X2Rad(a);
+    int i, j;
+    //precalculate
+    for (int a = 0; a < around; a++) {
+        float angf = X2Rad(a);
 
-		//tangent (theoretical range is [-inf..+inf], in practice (-128..+128) is fine)
-		float temp = tanf(angf) * (1 << TanFixPoint);
-		if (temp > (128 << TanFixPoint) - 1)
-			Tan_fp[a] = (128 << TanFixPoint) - 1;
-		else
-		if (temp < (-128 << TanFixPoint) + 1)
-			Tan_fp[a] = (-128 << TanFixPoint) + 1;
-		else
-			Tan_fp[a] = (int)temp;
+        //tangent (theoretical range is [-inf..+inf], in practice (-128..+128) is fine)
+        float temp = tanf(angf) * (1 << TanFixPoint);
+        if (temp > (128 << TanFixPoint) - 1)
+            Tan_fp[a] = (128 << TanFixPoint) - 1;
+        else
+        if (temp < (-128 << TanFixPoint) + 1)
+            Tan_fp[a] = (-128 << TanFixPoint) + 1;
+        else
+            Tan_fp[a] = (int)temp;
 
-		//cotangent
-		temp = 1 / tanf(angf) * (1 << TanFixPoint);
-		if (temp > 128 * (1 << TanFixPoint) - 1)
-			cTan_fp[a] = 128 * (1 << TanFixPoint) - 1;
-		else
-		if (temp < -128 * (1 << TanFixPoint) + 1)
-			cTan_fp[a] = -128 * (1 << TanFixPoint) + 1;
-		else
-			cTan_fp[a] = (int)temp;
-	}
+        //cotangent
+        temp = 1 / tanf(angf) * (1 << TanFixPoint);
+        if (temp > 128 * (1 << TanFixPoint) - 1)
+            cTan_fp[a] = 128 * (1 << TanFixPoint) - 1;
+        else
+        if (temp < -128 * (1 << TanFixPoint) + 1)
+            cTan_fp[a] = -128 * (1 << TanFixPoint) + 1;
+        else
+            cTan_fp[a] = (int)temp;
+    }
 
-	//vertically mirror the map (it's more natural to edit it this way)
-	for (i = 0; i < mapHeight/2; i++)
-		for (j = 0; j < mapWidth; j++) {
-			int aux = Map[i][j];
-			Map[i][j] = Map[mapHeight - 1 - i][j];
-			Map[mapHeight - 1 - i][j] = aux;
-		}
+    //vertically mirror the map (it's more natural to edit it this way)
+    for (i = 0; i < mapHeight/2; i++)
+        for (j = 0; j < mapWidth; j++) {
+            int aux = Map[i][j];
+            Map[i][j] = Map[mapHeight - 1 - i][j];
+            Map[mapHeight - 1 - i][j] = aux;
+        }
 
     //load texture
     FILE* pF = fopen("diamond.txt", "r");
@@ -100,61 +100,61 @@ bool init() {
 
 //returns wall ID (as map position)
 int CastX(int ang, int* xS, int* yS) { //   hit vertical walls ||
-	if ((ang == aroundq) || (ang == 3 * aroundq / 4))
-		return -1; //CastY() will hit a wall correctly
+    if ((ang == aroundq) || (ang == 3 * aroundq / 4))
+        return -1; //CastY() will hit a wall correctly
 
-	//prepare as for 1st or 4th quadrant
-	int x = (xC / sqSide) * sqSide + sqSide,   dx = sqSide,   adjXMap = 0;
-	int dy = ((sqSide * Tan_fp[ang]) >> TanFixPoint);
-	//2nd or 3rd quadrant
-	if ((aroundq < ang) && (ang < 3 * aroundq)) {
-		x -= sqSide;
-		adjXMap = -1;
-		dx = -dx;
-		dy = -dy;
-	}
-	int y = yC + (((x - xC) * Tan_fp[ang]) >> TanFixPoint);
+    //prepare as for 1st or 4th quadrant
+    int x = (xC / sqSide) * sqSide + sqSide,   dx = sqSide,   adjXMap = 0;
+    int dy = ((sqSide * Tan_fp[ang]) >> TanFixPoint);
+    //2nd or 3rd quadrant
+    if ((aroundq < ang) && (ang < 3 * aroundq)) {
+        x -= sqSide;
+        adjXMap = -1;
+        dx = -dx;
+        dy = -dy;
+    }
+    int y = yC + (((x - xC) * Tan_fp[ang]) >> TanFixPoint);
 
-	while ((x > 0) && (x < mapSizeWidth) && (y > 0) && (y < mapSizeHeight) &&
-		   (Map[y / sqSide][x / sqSide + adjXMap] == 0)) {
-		x += dx;
-		y += dy;
-	}
+    while ((x > 0) && (x < mapSizeWidth) && (y > 0) && (y < mapSizeHeight) &&
+           (Map[y / sqSide][x / sqSide + adjXMap] == 0)) {
+        x += dx;
+        y += dy;
+    }
 
-	*xS = x;
-	*yS = y;
-	return (y / sqSide) * mapWidth + (x / sqSide);
+    *xS = x;
+    *yS = y;
+    return (y / sqSide) * mapWidth + (x / sqSide);
 }
 
 //returns wall ID (as map position)
 int CastY(int ang, int* xS, int* yS) { //   hit horizontal walls ==
-	if ((ang == 0) || (ang == aroundh))
-		return -1; //CastX() will hit a wall correctly
+    if ((ang == 0) || (ang == aroundh))
+        return -1; //CastX() will hit a wall correctly
 
-	//prepare as for 1st or 2nd quadrant
-	int y = (yC / sqSide) * sqSide + sqSide,   dy = sqSide,   adjYMap = 0;
-	int dx = (sqSide * cTan_fp[ang]) >> TanFixPoint;
-	if (ang > aroundh) { //3rd or 4th quadrants
-		y -= sqSide;
-		adjYMap = -1;
-		dy = -dy;
-		dx = -dx;
-	}
-	int x = xC + (((y - yC) * cTan_fp[ang]) >> TanFixPoint);
+    //prepare as for 1st or 2nd quadrant
+    int y = (yC / sqSide) * sqSide + sqSide,   dy = sqSide,   adjYMap = 0;
+    int dx = (sqSide * cTan_fp[ang]) >> TanFixPoint;
+    if (ang > aroundh) { //3rd or 4th quadrants
+        y -= sqSide;
+        adjYMap = -1;
+        dy = -dy;
+        dx = -dx;
+    }
+    int x = xC + (((y - yC) * cTan_fp[ang]) >> TanFixPoint);
 
-	while ((x > 0) && (x < mapSizeWidth) && (y > 0) && (y < mapSizeHeight) &&
-		   (Map[y / sqSide + adjYMap][x / sqSide] == 0)) {
-		x += dx;
-		y += dy;
-	}
+    while ((x > 0) && (x < mapSizeWidth) && (y > 0) && (y < mapSizeHeight) &&
+           (Map[y / sqSide + adjYMap][x / sqSide] == 0)) {
+        x += dx;
+        y += dy;
+    }
 
-	*xS = x;
-	*yS = y;
-	return (y / sqSide) * mapWidth + (x / sqSide);
+    *xS = x;
+    *yS = y;
+    return (y / sqSide) * mapWidth + (x / sqSide);
 }
 
 void RenderColumn(int col, int h, int textureColumn) {
-	int Dh_fp = (sqSide << 10) / h; //1 row in screen space is this many rows in texture space; 10 bits fixed point
+    int Dh_fp = (sqSide << 10) / h; //1 row in screen space is this many rows in texture space; 10 bits fixed point
     int textureRow_fp = 0;
     int minY = screenHh - h / 2;
     if (minY < 0) {
@@ -175,31 +175,31 @@ void RenderColumn(int col, int h, int textureColumn) {
 }
 
 void Render() {
-	memset(screen, ' ', sizeof(screen));
+    memset(screen, ' ', sizeof(screen));
 
-	const int viewerToScreen_sq = sq(screenWh) * 3; //FOV = 60 degs => viewerToScreen = screenWh * sqrt(3)
-	int prevWallID, prevWallHeight;
-	for (int col = 0; col < screenW; col++) {
-		int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000, xHit, yHit, wallID, h;
-		int ang = (screenWh - col + angleC + around) % around;
-		int wallIDX = CastX(ang, &xX, &yX);
-		int wallIDY = CastY(ang, &xY, &yY);
-		if (abs(xC - xX) < abs(xC - xY)) { //choose the nearest hit point
-			xHit = xX;
-			yHit = yX;
-			wallID = wallIDX;
-		}
-		else {
-			xHit = xY;
-			yHit = yY;
-			wallID = wallIDY;
-		}
-		int textureColumn = (xHit + yHit) % sqSide;
-		int dist_sq = sq(xC - xHit) + sq(yC - yHit);
-		if (dist_sq == 0)
-			h = 10000;
-		else
-			h = int(sqSide * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq));
+    const int viewerToScreen_sq = sq(screenWh) * 3; //FOV = 60 degs => viewerToScreen = screenWh * sqrt(3)
+    int prevWallID, prevWallHeight;
+    for (int col = 0; col < screenW; col++) {
+        int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000, xHit, yHit, wallID, h;
+        int ang = (screenWh - col + angleC + around) % around;
+        int wallIDX = CastX(ang, &xX, &yX);
+        int wallIDY = CastY(ang, &xY, &yY);
+        if (abs(xC - xX) < abs(xC - xY)) { //choose the nearest hit point
+            xHit = xX;
+            yHit = yX;
+            wallID = wallIDX;
+        }
+        else {
+            xHit = xY;
+            yHit = yY;
+            wallID = wallIDY;
+        }
+        int textureColumn = (xHit + yHit) % sqSide;
+        int dist_sq = sq(xC - xHit) + sq(yC - yHit);
+        if (dist_sq == 0)
+            h = 10000;
+        else
+            h = int(sqSide * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq));
 
         RenderColumn(col, h, textureColumn);
 
@@ -210,9 +210,9 @@ void Render() {
             else //prev cube was in background, curr in foreground
                 RenderColumn(col, h, -1); //re-render the margin of curr cube with '*'
 
-		prevWallID = wallID;
-		prevWallHeight = h;
-	}
+        prevWallID = wallID;
+        prevWallHeight = h;
+    }
 
     for (int row = 0; row < screenH; row++)
         screen[row][screenW] = '\n';
@@ -231,22 +231,22 @@ void Render() {
     //when having at least one blank neighbour and at least one 'O' neighbour
     for (int row = 0; row < screenH; row++)
         for (int col = 0; col < screenW; col++)
-			if (screen[row][col] == 'O') {
-				int blanksCnt = 0, bigOsCnt = 0;
-				for (int drow = -1; drow <= 1; drow++)
-					for (int dcol = -1; dcol <= 1; dcol++) {
-						int col1 = col + dcol;
-						int row1 = row + drow;
-						if ((col1 >= 0) && (col1 < screenW) && (row1 >= 0) && (row1 < screenH)) {
-							blanksCnt += (screen[row1][col1] == ' ');
-							bigOsCnt  += (screen[row1][col1] == 'O');
-						}
-					}
-				if (blanksCnt && bigOsCnt)
-					screen[row][col] = 'o';
-			}
+            if (screen[row][col] == 'O') {
+                int blanksCnt = 0, bigOsCnt = 0;
+                for (int drow = -1; drow <= 1; drow++)
+                    for (int dcol = -1; dcol <= 1; dcol++) {
+                        int col1 = col + dcol;
+                        int row1 = row + drow;
+                        if ((col1 >= 0) && (col1 < screenW) && (row1 >= 0) && (row1 < screenH)) {
+                            blanksCnt += (screen[row1][col1] == ' ');
+                            bigOsCnt  += (screen[row1][col1] == 'O');
+                        }
+                    }
+                if (blanksCnt && bigOsCnt)
+                    screen[row][col] = 'o';
+            }
 
-	//flush the screen matrix onto the real screen
+    //flush the screen matrix onto the real screen
     system("cls"); //clear the (real) screen
     screen[screenH - 1][screenW - 1] = 0; //avoid scrolling one row up when the screen is full
     printf("%s", (char*)screen);
@@ -260,7 +260,7 @@ int main()
 
     while (1) {
         Render();
-		loopController(xC, yC, angleC, around);
+        loopController(xC, yC, angleC, around);
     }
 
     return 0;
