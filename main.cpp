@@ -9,9 +9,8 @@
 
 #include "Config.h"
 #include "Controller.h"
+#include "main.h"
 #include "Map.h"
-
-#define sq(x) ((x)*(x))
 
 
 const int mapSizeHeight = mapHeight * sqSide, mapSizeWidth = mapWidth * sqSide;
