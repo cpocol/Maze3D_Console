@@ -84,58 +84,72 @@ bool init() {
 }
 
 //returns wall ID (as map position)
-int CastX(int ang, int* xS, int* yS) { //   hit vertical walls ||
+int CastX(int ang, int& xHit, int& yHit) { //   hit vertical walls ||
     if ((ang == aroundq) || (ang == 3 * aroundq / 4))
         return -1; //CastY() will hit a wall correctly
 
     //prepare as for 1st or 4th quadrant
-    int x = (xC / sqSide) * sqSide + sqSide,   dx = sqSide,   adjXMap = 0;
+    xHit = (xC / sqSide) * sqSide + sqSide;
+	int dx = sqSide,   adjXMap = 0;
     int dy = ((sqSide * Tan_fp[ang]) >> TanFixPoint);
     //2nd or 3rd quadrant
     if ((aroundq < ang) && (ang < 3 * aroundq)) {
-        x -= sqSide;
+        xHit -= sqSide;
         adjXMap = -1;
         dx = -dx;
         dy = -dy;
     }
-    int y = yC + (((x - xC) * Tan_fp[ang]) >> TanFixPoint);
+    yHit = yC + (((xHit - xC) * Tan_fp[ang]) >> TanFixPoint);
 
-    while ((x > 0) && (x < mapSizeWidth) && (y > 0) && (y < mapSizeHeight) &&
-           (Map[y / sqSide][x / sqSide + adjXMap] == 0)) {
-        x += dx;
-        y += dy;
+    while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit) && (yHit < mapSizeHeight) &&
+           (Map[yHit / sqSide][xHit / sqSide + adjXMap] == 0)) {
+        xHit += dx;
+        yHit += dy;
     }
-
-    *xS = x;
-    *yS = y;
-    return (y / sqSide) * mapWidth + (x / sqSide + adjXMap);
+    return (yHit / sqSide) * mapWidth + (xHit / sqSide + adjXMap);
 }
 
 //returns wall ID (as map position)
-int CastY(int ang, int* xS, int* yS) { //   hit horizontal walls ==
+int CastY(int ang, int& xHit, int& yHit) { //   hit horizontal walls ==
     if ((ang == 0) || (ang == aroundh))
         return -1; //CastX() will hit a wall correctly
 
     //prepare as for 1st or 2nd quadrant
-    int y = (yC / sqSide) * sqSide + sqSide,   dy = sqSide,   adjYMap = 0;
+    yHit = (yC / sqSide) * sqSide + sqSide;
+	int dy = sqSide,   adjYMap = 0;
     int dx = (sqSide * cTan_fp[ang]) >> TanFixPoint;
     if (ang > aroundh) { //3rd or 4th quadrants
-        y -= sqSide;
+        yHit -= sqSide;
         adjYMap = -1;
         dy = -dy;
         dx = -dx;
     }
-    int x = xC + (((y - yC) * cTan_fp[ang]) >> TanFixPoint);
+    xHit = xC + (((yHit - yC) * cTan_fp[ang]) >> TanFixPoint);
 
-    while ((x > 0) && (x < mapSizeWidth) && (y > 0) && (y < mapSizeHeight) &&
-           (Map[y / sqSide + adjYMap][x / sqSide] == 0)) {
-        x += dx;
-        y += dy;
+    while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit) && (yHit < mapSizeHeight) &&
+           (Map[yHit / sqSide + adjYMap][xHit / sqSide] == 0)) {
+        xHit += dx;
+        yHit += dy;
     }
 
-    *xS = x;
-    *yS = y;
-    return (y / sqSide + adjYMap) * mapWidth + (x / sqSide);
+    return (yHit / sqSide + adjYMap) * mapWidth + (xHit / sqSide);
+}
+
+//returns wall ID (as map position)
+int Cast(int ang, int& xHit, int& yHit) {
+    int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000;
+    int wallIDX = CastX(ang, xX, yX);
+    int wallIDY = CastY(ang, xY, yY);
+    if (abs(xC - xX) < abs(xC - xY)) { //choose the nearest hit point
+        xHit = xX;
+        yHit = yX;
+        return 2 * wallIDX + 0;
+    }
+    else {
+        xHit = xY;
+        yHit = yY;
+        return 2 * wallIDY + 1;
+    }
 }
 
 void RenderColumn(int col, int h, int textureColumn) {
@@ -170,21 +184,11 @@ void Render() {
     //pass 1: do the ray casting and store results
     const int viewerToScreen_sq = sq(screenWh) * 3; //FOV = 60 degs => viewerToScreen = screenWh * sqrt(3)
     for (int col = 0; col < screenW; col++) {
-        int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000, xHit, yHit;
         int ang = (screenWh - col + angleC + around) % around;
-        int wallIDX = CastX(ang, &xX, &yX);
-        int wallIDY = CastY(ang, &xY, &yY);
-        if (abs(xC - xX) < abs(xC - xY)) { //choose the nearest hit point
-            xHit = xX;
-            yHit = yX;
-            WallID[col] = 2 * wallIDX + 0;
-        }
-        else {
-            xHit = xY;
-            yHit = yY;
-            WallID[col] = 2 * wallIDY + 1;
-        }
-        TextureColumn[col] = (xHit + yHit) % sqSide;
+        int xHit, yHit;
+		WallID[col] = Cast(ang, xHit, yHit);
+
+		TextureColumn[col] = (xHit + yHit) % sqSide;
         int dist_sq = sq(xC - xHit) + sq(yC - yHit);
         if (dist_sq == 0)
             H[col] = 10000;
