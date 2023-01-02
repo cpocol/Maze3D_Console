@@ -283,9 +283,10 @@ int main()
     if (!init())
         return 0;
 
+	Render();
     while (1) {
-        Render();
-        loopController(xC, yC, angleC, around);
+        if (loopController(xC, yC, angleC, around))
+		   Render();
     }
 
     return 0;

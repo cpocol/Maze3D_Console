@@ -23,3 +23,4 @@ Some design aims:
     - make sure the walls bounder is always drawn
     - anti-aliasing with smaller chars at texture edges
 	
+(handling key pressing implemented for Windows only so far)

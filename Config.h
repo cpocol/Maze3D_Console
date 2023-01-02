@@ -1,7 +1,7 @@
 #pragma once
 
-//#define CONTINUOUS_RENDERING //comment this out and new rendering will be done only when pressing a key (avoid flickering)
 #define INVERT_COORDINATE_SYSTEM //we need this because the map's CS is left handed while the ray casting works right handed
+#define USE_MULTIPLE_KEYS_SIMULTANEOUSLY
 
 #define MOVE_SPD 20
 #define ROTATE_SPD 5
