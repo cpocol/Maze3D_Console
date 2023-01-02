@@ -17,6 +17,7 @@
 const int mapSizeHeight = mapHeight * sqSide, mapSizeWidth = mapWidth * sqSide;
 char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
 char Texture[sqSide*sqSide];
+int H[screenW], WallID[screenW], TextureColumn[screenW];
 
 const int TanFixPoint = 7;
 int Tan_fp[around]; //TanFixPoint bits fixed point
@@ -107,7 +108,7 @@ int CastX(int ang, int* xS, int* yS) { //   hit vertical walls ||
 
     *xS = x;
     *yS = y;
-    return (y / sqSide) * mapWidth + (x / sqSide);
+    return (y / sqSide) * mapWidth + (x / sqSide + adjXMap);
 }
 
 //returns wall ID (as map position)
@@ -134,23 +135,20 @@ int CastY(int ang, int* xS, int* yS) { //   hit horizontal walls ==
 
     *xS = x;
     *yS = y;
-    return (y / sqSide) * mapWidth + (x / sqSide);
+    return (y / sqSide + adjYMap) * mapWidth + (x / sqSide);
 }
 
 void RenderColumn(int col, int h, int textureColumn) {
-#ifdef INVERT_COORDINATE_SYSTEM
-	col = screenW - 1 - col;
-#endif
     int Dh_fp = (sqSide << 10) / h; //1 row in screen space is this many rows in texture space; 10 bits fixed point
     int textureRow_fp = 0;
-    int minY = screenHh - h / 2;
-    if (minY < 0) {
-        textureRow_fp = -minY * Dh_fp;
-        minY = 0;
+    int minRow = screenHh - h / 2;
+    if (minRow < 0) {
+        textureRow_fp = -minRow * Dh_fp;
+        minRow = 0;
     }
-    int maxY = min(screenHh + h / 2, screenH);
+    int maxRow = min(screenHh + h / 2, screenH);
 
-    for (int row = minY; row < maxY; row++) {
+    for (int row = minRow; row < maxRow; row++) {
         char pixel = *(Texture + textureColumn + (textureRow_fp >> 10) * sqSide);
         //make sure the borders are always drawn - it improves the "contrast"
         if ((textureColumn == -1) //wall lateral margin
@@ -159,79 +157,119 @@ void RenderColumn(int col, int h, int textureColumn) {
         screen[row][col] = pixel;
         textureRow_fp += Dh_fp;
     }
+    //just for debugging
+    //char str[100];
+    //_itoa(WallID[col], str, 10);
+    //for (int row = minRow; row < minRow + (int)strlen(str); row++)
+    //    screen[row][col] = str[row - minRow];
 }
 
 void Render() {
     memset(screen, ' ', sizeof(screen));
 
+    //pass 1: do the ray casting and store results
     const int viewerToScreen_sq = sq(screenWh) * 3; //FOV = 60 degs => viewerToScreen = screenWh * sqrt(3)
-    int prevWallID, prevWallHeight;
     for (int col = 0; col < screenW; col++) {
-        int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000, xHit, yHit, wallID, h;
+        int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000, xHit, yHit;
         int ang = (screenWh - col + angleC + around) % around;
         int wallIDX = CastX(ang, &xX, &yX);
         int wallIDY = CastY(ang, &xY, &yY);
         if (abs(xC - xX) < abs(xC - xY)) { //choose the nearest hit point
             xHit = xX;
             yHit = yX;
-            wallID = wallIDX;
+            WallID[col] = 2 * wallIDX + 0;
         }
         else {
             xHit = xY;
             yHit = yY;
-            wallID = wallIDY;
+            WallID[col] = 2 * wallIDY + 1;
         }
-        int textureColumn = (xHit + yHit) % sqSide;
+        TextureColumn[col] = (xHit + yHit) % sqSide;
         int dist_sq = sq(xC - xHit) + sq(yC - yHit);
         if (dist_sq == 0)
-            h = 10000;
+            H[col] = 10000;
         else
-            h = int(sqSide * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq));
-
-        RenderColumn(col, h, textureColumn);
-
-        //make sure the borders are always drawn - it improves the "contrast"
-        if ((col > 0) && (wallID != prevWallID)) //we just finished rendering a cube
-            if (h < prevWallHeight) //prev cube was in foreground, curr in background
-                RenderColumn(col - 1, prevWallHeight, -1); //go back render the margin of prev cube with '*'
-            else //prev cube was in background, curr in foreground
-                RenderColumn(col, h, -1); //re-render the margin of curr cube with '*'
-
-        prevWallID = wallID;
-        prevWallHeight = h;
+            H[col] = int(sqSide * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq));
     }
 
-    for (int row = 0; row < screenH; row++)
+    //pass 2: analyze and improve
+    for (int col = 0; col < screenW; col++) {
+        //mind the gap
+        if ((0 < col) && (col < screenW - 1))
+            //if ((WallID[col] / 2 != WallID[col - 1] / 2) && (WallID[col - 1] / 2 == WallID[col + 1] / 2)) {
+            //    WallID[col]        = WallID[col - 1];
+            //    H[col]             = H[col - 1];
+            //    TextureColumn[col] = TextureColumn[col - 1];
+            //}
+            if ((WallID[col] / 2 != WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)) {
+                WallID[col]        = WallID[col - 1];
+                H[col]             = (H[col - 1] + H[col + 1]) / 2;
+                TextureColumn[col] = TextureColumn[col - 1];
+            }
+			//if ((WallID[col] / 2 == WallID[col + 1] / 2) &&
+    }
+
+    int drawnPrevBorder = 0;
+    for (int col = 0; col < screenW; col++) {
+        //!when using INVERT_COORDINATE_SYSTEM, next is prev and prev is next, they will be reverted later on
+        //tip: while developing, disable INVERT_COORDINATE_SYSTEM
+
+        if (drawnPrevBorder)
+            drawnPrevBorder = 0; //*s just drawn for the prev column
+        else
+        {
+            if ((col < screenW - 1) && (WallID[col] != WallID[col + 1]) && (H[col] >= H[col + 1]) || //next in background
+                (col > 0) && (WallID[col] != WallID[col - 1]) && (H[col] >= H[col - 1])) //prev in background
+            {
+                TextureColumn[col] = -1; //render the last margin of curr cube with '*'
+                drawnPrevBorder = 1;
+            }
+        }
+    }
+
+    //pass 3: do rendering
+    for (int col = 0; col < screenW; col++)
+        RenderColumn(col, H[col], TextureColumn[col]);
+
+    for (int row = 0; row < screenH; row++) {
         screen[row][screenW] = '\n';
+#ifdef INVERT_COORDINATE_SYSTEM
+        for (int col = 0; col < screenWh; col++) {
+            char aux = screen[row][col];
+            screen[row][col] = screen[row][screenW - 1 - col];
+            screen[row][screenW - 1 - col] = aux;
+        }
+#endif
+    }
 
     ///improve output
     //use a big round character ('O')
-    for (int row = 0; row < screenH; row++)
-        for (int col = 0; col < screenW; col++) {
-            if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
-                || (screen[row][col] == ' ') || (screen[row][col] == '*'))
-                continue;
-            screen[row][col] = 'O';
-        }
+    //for (int row = 0; row < screenH; row++)
+    //    for (int col = 0; col < screenW; col++) {
+    //        if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
+    //            || (screen[row][col] == ' ') || (screen[row][col] == '*'))
+    //            continue;
+    //        screen[row][col] = 'O';
+    //    }
 
-    //do anti-aliasing - use a small round character
-    //when having at least one blank neighbour and at least one 'O' neighbour
-    for (int row = 0; row < screenH; row++)
-        for (int col = 0; col < screenW; col++)
-            if (screen[row][col] == 'O') {
-                int blanksCnt = 0, bigOsCnt = 0;
-                for (int drow = -1; drow <= 1; drow++)
-                    for (int dcol = -1; dcol <= 1; dcol++) {
-                        int col1 = col + dcol;
-                        int row1 = row + drow;
-                        if ((col1 >= 0) && (col1 < screenW) && (row1 >= 0) && (row1 < screenH)) {
-                            blanksCnt += (screen[row1][col1] == ' ');
-                            bigOsCnt  += (screen[row1][col1] == 'O');
-                        }
-                    }
-                if (blanksCnt && bigOsCnt)
-                    screen[row][col] = 'o';
-            }
+    ////do anti-aliasing - use a small round character
+    ////when having at least one blank neighbour and at least one 'O' neighbour
+    //for (int row = 0; row < screenH; row++)
+    //    for (int col = 0; col < screenW; col++)
+    //        if (screen[row][col] == 'O') {
+    //            int blanksCnt = 0, bigOsCnt = 0;
+    //            for (int drow = -1; drow <= 1; drow++)
+    //                for (int dcol = -1; dcol <= 1; dcol++) {
+    //                    int col1 = col + dcol;
+    //                    int row1 = row + drow;
+    //                    if ((col1 >= 0) && (col1 < screenW) && (row1 >= 0) && (row1 < screenH)) {
+    //                        blanksCnt += (screen[row1][col1] == ' ');
+    //                        bigOsCnt  += (screen[row1][col1] == 'O');
+    //                    }
+    //                }
+    //            if (blanksCnt && bigOsCnt)
+    //                screen[row][col] = 'o';
+    //        }
 
     //flush the screen matrix onto the real screen
     system("cls"); //clear the (real) screen
