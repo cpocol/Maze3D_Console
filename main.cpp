@@ -23,9 +23,9 @@ int Tan_fp[around]; //TanFixPoint bits fixed point
 int cTan_fp[around];
 
 //initial viewer Current position and orientation
-int xC = int(2.5f * sqSide);
-int yC = int(2.5f * sqSide);
-int angleC = 10;
+int xC = xInit;
+int yC = yInit;
+int angleC = angleInit;
 
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
@@ -83,22 +83,22 @@ bool init() {
 }
 
 //returns wall ID (as map position)
-int CastX(int ang, int& xHit, int& yHit) { //   hit vertical walls ||
-    if ((ang == aroundq) || (ang == 3 * aroundq / 4))
+int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
+    if ((angle == aroundq) || (angle == around3q))
         return -1; //CastY() will hit a wall correctly
 
     //prepare as for 1st or 4th quadrant
     xHit = (xC / sqSide) * sqSide + sqSide;
-	int dx = sqSide,   adjXMap = 0;
-    int dy = ((sqSide * Tan_fp[ang]) >> TanFixPoint);
+    int dx = sqSide,   adjXMap = 0;
+    int dy = ((sqSide * Tan_fp[angle]) >> TanFixPoint);
     //2nd or 3rd quadrant
-    if ((aroundq < ang) && (ang < 3 * aroundq)) {
+    if ((aroundq < angle) && (angle < around3q)) {
         xHit -= sqSide;
         adjXMap = -1;
         dx = -dx;
         dy = -dy;
     }
-    yHit = yC + (((xHit - xC) * Tan_fp[ang]) >> TanFixPoint);
+    yHit = yC + (((xHit - xC) * Tan_fp[angle]) >> TanFixPoint);
 
     while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit) && (yHit < mapSizeHeight) &&
            (Map[yHit / sqSide][xHit / sqSide + adjXMap] == 0)) {
@@ -109,21 +109,21 @@ int CastX(int ang, int& xHit, int& yHit) { //   hit vertical walls ||
 }
 
 //returns wall ID (as map position)
-int CastY(int ang, int& xHit, int& yHit) { //   hit horizontal walls ==
-    if ((ang == 0) || (ang == aroundh))
+int CastY(int angle, int& xHit, int& yHit) { //   hit horizontal walls ==
+    if ((angle == 0) || (angle == aroundh))
         return -1; //CastX() will hit a wall correctly
 
     //prepare as for 1st or 2nd quadrant
     yHit = (yC / sqSide) * sqSide + sqSide;
-	int dy = sqSide,   adjYMap = 0;
-    int dx = (sqSide * cTan_fp[ang]) >> TanFixPoint;
-    if (ang > aroundh) { //3rd or 4th quadrants
+    int dy = sqSide,   adjYMap = 0;
+    int dx = (sqSide * cTan_fp[angle]) >> TanFixPoint;
+    if (angle > aroundh) { //3rd or 4th quadrants
         yHit -= sqSide;
         adjYMap = -1;
         dy = -dy;
         dx = -dx;
     }
-    xHit = xC + (((yHit - yC) * cTan_fp[ang]) >> TanFixPoint);
+    xHit = xC + (((yHit - yC) * cTan_fp[angle]) >> TanFixPoint);
 
     while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit) && (yHit < mapSizeHeight) &&
            (Map[yHit / sqSide + adjYMap][xHit / sqSide] == 0)) {
@@ -135,16 +135,17 @@ int CastY(int ang, int& xHit, int& yHit) { //   hit horizontal walls ==
 }
 
 //returns wall ID (as map position)
-int Cast(int ang, int& xHit, int& yHit) {
+int Cast(int angle, int& xHit, int& yHit) {
     int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000;
-    int wallIDX = CastX(ang, xX, yX);
-    int wallIDY = CastY(ang, xY, yY);
-    if (abs(xC - xX) < abs(xC - xY)) { //choose the nearest hit point
+    int wallIDX = CastX(angle, xX, yX);
+    int wallIDY = CastY(angle, xY, yY);
+    //choose the nearest hit point
+    if (abs(xC - xX) < abs(xC - xY)) { //vertical wall ||
         xHit = xX;
         yHit = yX;
         return 2 * wallIDX + 0;
     }
-    else {
+    else { //horizontal wall ==
         xHit = xY;
         yHit = yY;
         return 2 * wallIDY + 1;
@@ -185,9 +186,9 @@ void Render() {
     for (int col = 0; col < screenW; col++) {
         int ang = (screenWh - col + angleC + around) % around;
         int xHit, yHit;
-		WallID[col] = Cast(ang, xHit, yHit);
+        WallID[col] = Cast(ang, xHit, yHit);
 
-		TextureColumn[col] = (xHit + yHit) % sqSide;
+        TextureColumn[col] = (xHit + yHit) % sqSide;
         int dist_sq = sq(xC - xHit) + sq(yC - yHit);
         if (dist_sq == 0)
             H[col] = 10000;
@@ -199,17 +200,11 @@ void Render() {
     for (int col = 0; col < screenW; col++) {
         //mind the gap
         if ((0 < col) && (col < screenW - 1))
-            //if ((WallID[col] / 2 != WallID[col - 1] / 2) && (WallID[col - 1] / 2 == WallID[col + 1] / 2)) {
-            //    WallID[col]        = WallID[col - 1];
-            //    H[col]             = H[col - 1];
-            //    TextureColumn[col] = TextureColumn[col - 1];
-            //}
             if ((WallID[col] / 2 != WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)) {
                 WallID[col]        = WallID[col - 1];
                 H[col]             = (H[col - 1] + H[col + 1]) / 2;
                 TextureColumn[col] = TextureColumn[col - 1];
             }
-			//if ((WallID[col] / 2 == WallID[col + 1] / 2) &&
     }
 
     int drawnPrevBorder = 0;
@@ -286,10 +281,10 @@ int main()
     if (!init())
         return 0;
 
-	Render();
+    Render();
     while (1) {
         if (loopController(xC, yC, angleC, around))
-		   Render();
+           Render();
     }
 
     return 0;
