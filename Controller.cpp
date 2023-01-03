@@ -8,6 +8,13 @@
 #include "main.h"
 #include "Map.h"
 
+HANDLE hin;
+
+void initController() {
+     hin = GetStdHandle(STD_INPUT_HANDLE);
+     SetConsoleMode(hin, ENABLE_PROCESSED_INPUT | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
+}
+
 void doPedal(int& x, int& y, int angle) {
     float rad = angle * 6.2831f / around;
     int xTest = x + int(MOVE_SPD * cos(rad));
@@ -98,6 +105,19 @@ int loopController(int& x, int& y, int& angle, int around) {
             if ((ch == 77) || (GetAsyncKeyState(VK_RIGHT) & 0x8000)) { //the right arrow key => do turn right
                 doRotate(angle, -1 * sign, around);
                 did = 1;
+            }
+        }
+
+        //check the mouse
+        INPUT_RECORD InputRecord[128];
+        DWORD RecordsRead;
+        ReadConsoleInput(hin, InputRecord, 128, &RecordsRead);
+        for (int i = 0; i < RecordsRead; i++) {
+            //if (InputRecord[0].EventType != FOCUS_EVENT) {
+            if (InputRecord[0].EventType == MOUSE_EVENT) {
+                int a = 0;
+                if(InputRecord[0].Event.MouseEvent.dwEventFlags == MOUSE_MOVED)
+                    int b = 0;
             }
         }
     } //if (_kbhit())
