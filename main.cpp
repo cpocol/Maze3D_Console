@@ -79,6 +79,8 @@ bool init() {
         memcpy(Texture + i*sqSide, str, sqSide);
     }
 
+    initController();
+
     return true;
 }
 
