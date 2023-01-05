@@ -20,7 +20,7 @@ Some design aims:
 - stick to the 80x25 screen resolution as some consoles only support that one (but make it configurable for custom resolutions)
 - as the resolution is really low, improve the visual appearance:
     - use texture with little details
-    - make sure the walls bounder is always drawn
+    - make sure the walls border is always drawn
     - anti-aliasing with smaller chars at texture edges
 	
-(handling key pressing implemented for Windows only so far)
+(handling key pressing is implemented for Windows only so far)

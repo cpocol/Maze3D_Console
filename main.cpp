@@ -14,12 +14,12 @@
 
 
 const int mapSizeHeight = mapHeight * sqSide, mapSizeWidth = mapWidth * sqSide;
+const int mapSizeWidth_fp = (mapSizeWidth << fp), mapSizeHeight_fp = (mapSizeHeight << fp);
 char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
 char Texture[sqSide*sqSide];
 int H[screenW], WallID[screenW], TextureColumn[screenW];
 
-const int TanFixPoint = 7;
-int Tan_fp[around]; //TanFixPoint bits fixed point
+int Tan_fp[around]; //fp bits fixed point
 int cTan_fp[around];
 
 //initial viewer Current position and orientation
@@ -38,20 +38,20 @@ bool init() {
         float angf = X2Rad(a);
 
         //tangent (theoretical range is [-inf..+inf], in practice (-128..+128) is fine)
-        float temp = tanf(angf) * (1 << TanFixPoint);
+        float temp = tanf(angf) * (1 << fp);
         Tan_fp[a] = (int)temp;
-        if (temp > (128 << TanFixPoint) - 1)
-            Tan_fp[a] = (128 << TanFixPoint) - 1;
-        if (temp < (-128 << TanFixPoint) + 1)
-            Tan_fp[a] = (-128 << TanFixPoint) + 1;
+        if (temp > (128 << fp) - 1)
+            Tan_fp[a] = (128 << fp) - 1;
+        if (temp < (-128 << fp) + 1)
+            Tan_fp[a] = (-128 << fp) + 1;
 
         //cotangent
-        temp = 1 / tanf(angf) * (1 << TanFixPoint);
+        temp = 1 / tanf(angf) * (1 << fp);
         cTan_fp[a] = (int)temp;
-        if (temp > 128 * (1 << TanFixPoint) - 1)
-            cTan_fp[a] = 128 * (1 << TanFixPoint) - 1;
-        if (temp < -128 * (1 << TanFixPoint) + 1)
-            cTan_fp[a] = -128 * (1 << TanFixPoint) + 1;
+        if (temp > 128 * (1 << fp) - 1)
+            cTan_fp[a] = 128 * (1 << fp) - 1;
+        if (temp < -128 * (1 << fp) + 1)
+            cTan_fp[a] = -128 * (1 << fp) + 1;
     }
 
     //load texture
@@ -90,21 +90,23 @@ int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
     //prepare as for 1st or 4th quadrant
     xHit = (xC / sqSide) * sqSide + sqSide;
     int dx = sqSide,   adjXMap = 0;
-    int dy = ((sqSide * Tan_fp[angle]) >> TanFixPoint);
+    int dy_fp = sqSide * Tan_fp[angle];
     //2nd or 3rd quadrant
     if ((aroundq < angle) && (angle < around3q)) {
         xHit -= sqSide;
         adjXMap = -1;
         dx = -dx;
-        dy = -dy;
+        dy_fp = -dy_fp;
     }
-    yHit = yC + (((xHit - xC) * Tan_fp[angle]) >> TanFixPoint);
+    int yHit_fp = (yC << fp) + (xHit - xC) * Tan_fp[angle];
 
-    while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit) && (yHit < mapSizeHeight) &&
-           (Map[yHit / sqSide][xHit / sqSide + adjXMap] == 0)) {
+    while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit_fp) && (yHit_fp < mapSizeHeight_fp) &&
+           (Map[(yHit_fp >> fp) / sqSide][xHit / sqSide + adjXMap] == 0)) {
         xHit += dx;
-        yHit += dy;
+        yHit_fp += dy_fp;
     }
+    yHit = (yHit_fp >> fp);
+
     return (yHit / sqSide) * mapWidth + (xHit / sqSide + adjXMap);
 }
 
@@ -116,20 +118,21 @@ int CastY(int angle, int& xHit, int& yHit) { //   hit horizontal walls ==
     //prepare as for 1st or 2nd quadrant
     yHit = (yC / sqSide) * sqSide + sqSide;
     int dy = sqSide,   adjYMap = 0;
-    int dx = (sqSide * cTan_fp[angle]) >> TanFixPoint;
+    int dx_fp = sqSide * cTan_fp[angle];
     if (angle > aroundh) { //3rd or 4th quadrants
         yHit -= sqSide;
         adjYMap = -1;
         dy = -dy;
-        dx = -dx;
+        dx_fp = -dx_fp;
     }
-    xHit = xC + (((yHit - yC) * cTan_fp[angle]) >> TanFixPoint);
+    int xHit_fp = (xC << fp) + (yHit - yC) * cTan_fp[angle];
 
-    while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit) && (yHit < mapSizeHeight) &&
-           (Map[yHit / sqSide + adjYMap][xHit / sqSide] == 0)) {
-        xHit += dx;
+    while ((0 < xHit_fp) && (xHit_fp < mapSizeWidth_fp) && (0 < yHit) && (yHit < mapSizeHeight) &&
+           (Map[yHit / sqSide + adjYMap][(xHit_fp >> fp) / sqSide] == 0)) {
+        xHit_fp += dx_fp;
         yHit += dy;
     }
+    xHit = (xHit_fp >> fp);
 
     return (yHit / sqSide + adjYMap) * mapWidth + (xHit / sqSide);
 }
@@ -156,17 +159,17 @@ void RenderColumn(int col, int h, int textureColumn) {
     int Dh_fp = (sqSide << 10) / h; //1 row in screen space is this many rows in texture space; 10 bits fixed point
     int textureRow_fp = 0;
     int minRow = screenHh - h / 2;
+    int maxRow = min(minRow + h, screenH);
     if (minRow < 0) {
         textureRow_fp = -minRow * Dh_fp;
         minRow = 0;
     }
-    int maxRow = min(screenHh + h / 2, screenH);
 
     for (int row = minRow; row < maxRow; row++) {
         char pixel = *(Texture + textureColumn + (textureRow_fp >> 10) * sqSide);
         //make sure the borders are always drawn - it improves the "contrast"
         if ((textureColumn == -1) //wall lateral margin
-            || (row == (screenHh - h / 2)) || (row == (screenHh + h / 2) - 1)) //top or bottom
+            || (row == (screenHh - h / 2)) || (row == (screenHh - h / 2 + h) - 1)) //top or bottom
             pixel = '*';
         screen[row][col] = pixel;
         textureRow_fp += Dh_fp;
@@ -193,20 +196,10 @@ void Render() {
         if (dist_sq == 0)
             H[col] = 10000;
         else
-            H[col] = int(sqSide * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq));
+            H[col] = int(sqSide * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
     }
 
     //pass 2: analyze and improve
-    for (int col = 0; col < screenW; col++) {
-        //mind the gap
-        if ((0 < col) && (col < screenW - 1))
-            if ((WallID[col] / 2 != WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)) {
-                WallID[col]        = WallID[col - 1];
-                H[col]             = (H[col - 1] + H[col + 1]) / 2;
-                TextureColumn[col] = TextureColumn[col - 1];
-            }
-    }
-
     int drawnPrevBorder = 0;
     for (int col = 0; col < screenW; col++) {
         //!when using INVERT_COORDINATE_SYSTEM, next is prev and prev is next, they will be reverted later on
@@ -215,14 +208,12 @@ void Render() {
         if (drawnPrevBorder)
             drawnPrevBorder = 0; //*s just drawn for the prev column
         else
-        {
             if ((col < screenW - 1) && (WallID[col] != WallID[col + 1]) && (H[col] >= H[col + 1]) || //next in background
                 (col > 0) && (WallID[col] != WallID[col - 1]) && (H[col] >= H[col - 1])) //prev in background
             {
                 TextureColumn[col] = -1; //render the last margin of curr cube with '*'
                 drawnPrevBorder = 1;
             }
-        }
     }
 
     //pass 3: do rendering
