@@ -27,15 +27,15 @@ void doPedal(int& x, int& y, int angle) {
         {
             x = xWall + safetyX;
             y = yTest;                                      //               __
-            if (Map[y / sqSide][x / sqSide + adjXMap] != 0) //it's a corner |
-                y = (yTest / sqSide) * sqSide + safetyY;
+            if (Map[y / sqSize][x / sqSize + adjXMap] != 0) //it's a corner |
+                y = (yTest / sqSize) * sqSize + safetyY;
         }
         else //horizontal wall ==
         {
             x = xTest;
             y = yWall + safetyY;                            //               __
-            if (Map[y / sqSide][x / sqSide + adjXMap] != 0) //it's a corner |
-                x = (xTest / sqSide) * sqSide + safetyX;
+            if (Map[y / sqSize][x / sqSize + adjXMap] != 0) //it's a corner |
+                x = (xTest / sqSize) * sqSize + safetyX;
         }
     }
     else //free cell
