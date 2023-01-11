@@ -69,6 +69,10 @@ int loopController(int& x, int& y, int& angle, int around) {
             angleC = angleInit;
             did = 1;
         }
+        if ((ch == 'M') || (GetAsyncKeyState('M') & 0x8000)) { //show/hide map
+            showMap = 1 - showMap;
+            did = 1;
+        }
         if ((ch == 'W') || (GetAsyncKeyState('W') & 0x8000)) { //pedal forward
             doPedal(x, y, angle);
             did = 1;

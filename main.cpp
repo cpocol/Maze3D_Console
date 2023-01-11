@@ -27,6 +27,8 @@ int xC = xInit;
 int yC = yInit;
 int angleC = angleInit;
 
+int showMap = 0;
+
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
 }
@@ -80,6 +82,42 @@ bool init() {
     }
 
     return true;
+}
+
+void renderMap() {
+    for (int y = 0; y < mapHeight; y++)
+        for (int x = 0; x < mapWidth; x++)
+            if (Map[y][x] == 0)
+                screen[y][x] = ' ';
+            else
+                screen[y][x] = 'W';
+    int xPos = xC / sqSize, yPos = yC / sqSize;
+    
+    screen[yPos][xPos] = 'P';
+
+    if ((0 < xPos) && (xPos < mapWidth - 1) && (0 < yPos) && (yPos < mapHeight - 1))
+    {
+        char dx, dy, dir;
+        if ((angleC < 1 * around / 16) || (angleC >= 15 * around / 16))
+            dx = +1, dy = 0, dir = '-';
+        if ((1 * around / 16 <= angleC) && (angleC < 3 * around / 16))
+            dx = +1, dy = +1, dir = '\\';
+        if ((3 * around / 16 <= angleC) && (angleC < 5 * around / 16))
+            dx = +0, dy = +1, dir = '|';
+        if ((5 * around / 16 <= angleC) && (angleC < 7 * around / 16))
+            dx = -1, dy = +1, dir = '/';
+        if ((7 * around / 16 <= angleC) && (angleC < 9 * around / 16))
+            dx = -1, dy = 0, dir = '-';
+        if ((9 * around / 16 <= angleC) && (angleC < 11 * around / 16))
+            dx = -1, dy = -1, dir = '\\';
+        if ((11 * around / 16 <= angleC) && (angleC < 13 * around / 16))
+            dx = +0, dy = -1, dir = '|';
+        if ((13 * around / 16 <= angleC) && (angleC < 15 * around / 16))
+            dx = +1, dy = -1, dir = '/';
+        int xDirPos = xPos + dx;
+        int yDirPos = yPos + dy;
+        screen[yDirPos][xDirPos] = dir;
+    }
 }
 
 //returns wall ID (as map position)
@@ -156,29 +194,40 @@ int Cast(int angle, int& xHit, int& yHit) {
 }
 
 void RenderColumn(int col, int h, int textureColumn) {
-    int Dh_fp = (sqSize << 10) / h; //1 row in screen space is this many rows in texture space; 10 bits fixed point
+//makes sure the borders are always drawn - it improves the "contrast" if rendered in console
+
+    int Dh_fp = (sqSize << 20) / h; //1 row in screen space is this many rows in texture space; use fixed point
     int textureRow_fp = 0;
     int minRow = screenHh - h / 2;
     int maxRow = min(minRow + h, screenH);
     if (minRow < 0) {
-        textureRow_fp = -minRow * Dh_fp;
+        textureRow_fp = -(minRow * Dh_fp);
         minRow = 0;
     }
 
+    if (screenHh - h / 2 >= 0) { //top border visible
+        screen[minRow][col] = '*';
+        textureRow_fp += Dh_fp;
+        minRow++;
+    }
+
+    char pixel = '*';
     for (int row = minRow; row < maxRow; row++) {
-        char pixel = *(Texture + textureColumn + (textureRow_fp >> 10) * sqSize);
-        //make sure the borders are always drawn - it improves the "contrast"
-        if ((textureColumn == -1) //wall lateral margin
-            || (row == (screenHh - h / 2)) || (row == (screenHh - h / 2 + h) - 1)) //top or bottom
-            pixel = '*';
+        if (textureColumn != -1) //not lateral border
+            pixel = *(Texture + (textureRow_fp >> 20) * sqSize + textureColumn);
         screen[row][col] = pixel;
         textureRow_fp += Dh_fp;
     }
-    //just for debugging
-    //char str[100];
-    //_itoa(WallID[col], str, 10);
-    //for (int row = minRow; row < minRow + (int)strlen(str); row++)
-    //    screen[row][col] = str[row - minRow];
+
+    if (maxRow < screenH) //bottom border visible
+        screen[maxRow][col] = '*';
+
+    //display debugging info
+//   char str[100];
+//   _itoa(H[col], str, 10);
+//   int startRow = minRow_p / 2;
+//   for (int row = startRow; row < startRow + (int)strlen(str); row++)
+//       screen[row][col] = str[row - startRow];
 }
 
 void Render() {
@@ -211,7 +260,7 @@ void Render() {
             if ((col < screenW - 1) && (WallID[col] != WallID[col + 1]) && (H[col] >= H[col + 1]) || //next in background
                 (col > 0) && (WallID[col] != WallID[col - 1]) && (H[col] >= H[col - 1])) //prev in background
             {
-                TextureColumn[col] = -1; //render the last margin of curr cube with '*'
+                TextureColumn[col] = -1; //render the last border of curr cube with '*'
                 drawnPrevBorder = 1;
             }
     }
@@ -233,32 +282,35 @@ void Render() {
 
     ///improve output
     //use a big round character ('O')
-    //for (int row = 0; row < screenH; row++)
-    //    for (int col = 0; col < screenW; col++) {
-    //        if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
-    //            || (screen[row][col] == ' ') || (screen[row][col] == '*'))
-    //            continue;
-    //        screen[row][col] = 'O';
-    //    }
+    for (int row = 0; row < screenH; row++)
+        for (int col = 0; col < screenW; col++) {
+            if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
+                || (screen[row][col] == ' ') || (screen[row][col] == '*'))
+                continue;
+            screen[row][col] = 'O';
+        }
 
-    ////do anti-aliasing - use a small round character
-    ////when having at least one blank neighbour and at least one 'O' neighbour
-    //for (int row = 0; row < screenH; row++)
-    //    for (int col = 0; col < screenW; col++)
-    //        if (screen[row][col] == 'O') {
-    //            int blanksCnt = 0, bigOsCnt = 0;
-    //            for (int drow = -1; drow <= 1; drow++)
-    //                for (int dcol = -1; dcol <= 1; dcol++) {
-    //                    int col1 = col + dcol;
-    //                    int row1 = row + drow;
-    //                    if ((col1 >= 0) && (col1 < screenW) && (row1 >= 0) && (row1 < screenH)) {
-    //                        blanksCnt += (screen[row1][col1] == ' ');
-    //                        bigOsCnt  += (screen[row1][col1] == 'O');
-    //                    }
-    //                }
-    //            if (blanksCnt && bigOsCnt)
-    //                screen[row][col] = 'o';
-    //        }
+    //do anti-aliasing - use a small round character
+    //when having at least one blank neighbour and at least one 'O' neighbour
+    for (int row = 0; row < screenH; row++)
+        for (int col = 0; col < screenW; col++)
+            if (screen[row][col] == 'O') {
+                int blanksCnt = 0, bigOsCnt = 0;
+                for (int drow = -1; drow <= 1; drow++)
+                    for (int dcol = -1; dcol <= 1; dcol++) {
+                        int col1 = col + dcol;
+                        int row1 = row + drow;
+                        if ((col1 >= 0) && (col1 < screenW) && (row1 >= 0) && (row1 < screenH)) {
+                            blanksCnt += (screen[row1][col1] == ' ');
+                            bigOsCnt  += (screen[row1][col1] == 'O');
+                        }
+                    }
+                if (blanksCnt && bigOsCnt)
+                    screen[row][col] = 'o';
+            }
+
+    if (showMap)
+        renderMap();
 
     //flush the screen matrix onto the real screen
     system("cls"); //clear the (real) screen

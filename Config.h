@@ -19,3 +19,5 @@ const int fp = 17; //fixed point position
 //viewer Current position and orientation
 extern int xC, yC, angleC;
 const int xInit = int(2.5 * sqSize), yInit = int(2.5 * sqSize), angleInit = 10;
+
+extern int showMap;
