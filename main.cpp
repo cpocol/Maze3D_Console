@@ -27,7 +27,7 @@ int xC = xInit;
 int yC = yInit;
 int angleC = angleInit;
 
-int showMap = 0;
+int showMap = 1;
 
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
@@ -95,30 +95,25 @@ void renderMap() {
     
     screen[yPos][xPos] = 'P';
 
-    if ((0 < xPos) && (xPos < mapWidth - 1) && (0 < yPos) && (yPos < mapHeight - 1))
-    {
-        char dx, dy, dir;
-        if ((angleC < 1 * around / 16) || (angleC >= 15 * around / 16))
-            dx = +1, dy = 0, dir = '-';
-        if ((1 * around / 16 <= angleC) && (angleC < 3 * around / 16))
-            dx = +1, dy = +1, dir = '\\';
-        if ((3 * around / 16 <= angleC) && (angleC < 5 * around / 16))
-            dx = +0, dy = +1, dir = '|';
-        if ((5 * around / 16 <= angleC) && (angleC < 7 * around / 16))
-            dx = -1, dy = +1, dir = '/';
-        if ((7 * around / 16 <= angleC) && (angleC < 9 * around / 16))
-            dx = -1, dy = 0, dir = '-';
-        if ((9 * around / 16 <= angleC) && (angleC < 11 * around / 16))
-            dx = -1, dy = -1, dir = '\\';
-        if ((11 * around / 16 <= angleC) && (angleC < 13 * around / 16))
-            dx = +0, dy = -1, dir = '|';
-        if ((13 * around / 16 <= angleC) && (angleC < 15 * around / 16))
-            dx = +1, dy = -1, dir = '/';
-        int xDirPos = xPos + dx;
-        int yDirPos = yPos + dy;
-        screen[yDirPos][xDirPos] = dir;
-    }
-}
+	int dx[] = {+1, +1,  0, -1, -1, -1,  0, +1};
+	int dy[] = { 0, +1, +1, +1,  0, -1, -1, -1};
+	char dirs[] = R"(-\|/-\|/)";
+
+	int ang = (angleC + around / 16) % around;
+	int a = ang / (around / 8);
+	int xDirPos = xPos + dx[a];
+    int yDirPos = yPos + dy[a];
+    if ((0 <= xDirPos) && (xDirPos < mapWidth) && (0 <= yDirPos) && (yDirPos < mapHeight))
+	    screen[yDirPos][xDirPos] = dirs[a];
+
+	char str[100];
+	sprintf(str, "x = %d", xC);
+	strncpy((char*)screen + 0 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+	sprintf(str, "y = %d", yC);
+	strncpy((char*)screen + 1 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+	sprintf(str, "a = %d", angleC);
+	strncpy((char*)screen + 2 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+}	
 
 //returns wall ID (as map position)
 int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||

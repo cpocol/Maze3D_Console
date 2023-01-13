@@ -8,7 +8,7 @@
 #include "main.h"
 #include "Map.h"
 
-void doPedal(int& x, int& y, int angle) {
+void move(int& x, int& y, int angle) {
     float rad = angle * 6.2831f / around;
     int xTest = x + int(MOVE_SPD * cos(rad));
     int yTest = y + int(MOVE_SPD * sin(rad));
@@ -27,22 +27,22 @@ void doPedal(int& x, int& y, int angle) {
         {
             x = xWall + safetyX;
             y = yTest;                                      //               __
-            if (Map[y / sqSize][x / sqSize + adjXMap] != 0) //it's a corner |
-                y = (yTest / sqSize) * sqSize + safetyY;
+            if (Map[y / sqSize][x / sqSize] != 0) //it's a corner |
+                y = (yTest / sqSize - adjYMap) * sqSize + safetyY;
         }
         else //horizontal wall ==
         {
             x = xTest;
             y = yWall + safetyY;                            //               __
-            if (Map[y / sqSize][x / sqSize + adjXMap] != 0) //it's a corner |
-                x = (xTest / sqSize) * sqSize + safetyX;
+            if (Map[y / sqSize][x / sqSize] != 0) //it's a corner |
+                x = (xTest / sqSize - adjXMap) * sqSize + safetyX;
         }
     }
     else //free cell
         x = xTest, y = yTest;
 }
 
-void doRotate(int& angle, int dir, int around) {
+void rotate(int& angle, int dir, int around) {
     angle = (angle + dir * ROTATE_SPD + around) % around;
 }
 
@@ -74,19 +74,19 @@ int loopController(int& x, int& y, int& angle, int around) {
             did = 1;
         }
         if ((ch == 'W') || (GetAsyncKeyState('W') & 0x8000)) { //pedal forward
-            doPedal(x, y, angle);
+            move(x, y, angle);
             did = 1;
         }
         if ((ch == 'S') || (GetAsyncKeyState('S') & 0x8000)) { //pedal backward
-            doPedal(x, y, (angle + around / 2) % around);
+            move(x, y, (angle + around / 2) % around);
             did = 1;
         }
         if ((ch == 'A') || (GetAsyncKeyState('A') & 0x8000)) { //strafe left
-            doPedal(x, y, (angle + sign * around / 4 + around) % around);
+            move(x, y, (angle + sign * around / 4 + around) % around);
             did = 1;
         }
         if ((ch == 'D') || (GetAsyncKeyState('D') & 0x8000)) { //strafe right
-            doPedal(x, y, (angle - sign * around / 4 + around) % around);
+            move(x, y, (angle - sign * around / 4 + around) % around);
             did = 1;
         }
 #ifdef USE_MULTIPLE_KEYS_SIMULTANEOUSLY
@@ -96,11 +96,11 @@ int loopController(int& x, int& y, int& angle, int around) {
             ch = _getch();
 #endif
             if ((ch == 75) || (GetAsyncKeyState(VK_LEFT) & 0x8000)) { //the left arrow key => do turn left
-                doRotate(angle, +1 * sign, around);
+                rotate(angle, +1 * sign, around);
                 did = 1;
             }
             if ((ch == 77) || (GetAsyncKeyState(VK_RIGHT) & 0x8000)) { //the right arrow key => do turn right
-                doRotate(angle, -1 * sign, around);
+                rotate(angle, -1 * sign, around);
                 did = 1;
             }
         }
