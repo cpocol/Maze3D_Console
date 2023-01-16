@@ -46,6 +46,20 @@ void rotate(int& angle, int dir, int around) {
     angle = (angle + dir * ROTATE_SPD + around) % around;
 }
 
+int maxJumpHeight = int(1.1 * sqSizeh); //jump this high
+float fFPS = 30; //approximate FPS
+static int acceleratedMotion[200];
+
+void initController() {
+    float fDist = 0, fSpeed = 0, G = 4000;
+    for (int i = 0; i < 200; i++) {
+        acceleratedMotion[i] = (int)fDist;
+
+        fSpeed += G / fFPS; //G was empirically chosen as we don't have a proper world scale here
+        fDist += fSpeed / fFPS;
+    }
+}
+
 int loopController(int& x, int& y, int& angle, int around) {
     int sign = 1;
 #ifdef INVERT_COORDINATE_SYSTEM
@@ -87,6 +101,54 @@ int loopController(int& x, int& y, int& angle, int around) {
         }
         if ((ch == 'D') || (GetAsyncKeyState('D') & 0x8000)) { //strafe right
             move(x, y, (angle - sign * around / 4 + around) % around);
+            did = 1;
+        }
+
+        //jump
+        static int verticalAdvance = 0;
+        static int height_j, z;
+        int refreshVertMove = 1;
+        if (((ch == 'E') || (GetAsyncKeyState('E') & 0x8000)) && (verticalAdvance == 0)) {
+            verticalAdvance = 1;
+            //search for the acceleratedMotion entry so that we'll decelerate to zero speed at max jump height
+            for (height_j = 0; height_j < 200; height_j++)
+                if (acceleratedMotion[height_j] > maxJumpHeight)
+                    break;
+            z = max(0, maxJumpHeight - acceleratedMotion[height_j]);
+            did = 1;
+        }
+        else
+        if (verticalAdvance > 0) {
+            if (height_j > 0) {
+                height_j--;
+                z = maxJumpHeight - acceleratedMotion[height_j];
+            }
+            else {
+                verticalAdvance = -1;
+                z = maxJumpHeight;
+            }
+            did = 1;
+        }
+        else
+        if (verticalAdvance < 0) {
+            if (z > 0) {
+                height_j++;
+                z = max(0, maxJumpHeight - acceleratedMotion[height_j]);
+            }
+            else
+                verticalAdvance = 0;
+            did = 1;
+        }
+        else
+            refreshVertMove = 0;
+
+        if (refreshVertMove) {
+            elevation = 100 * z / sqSizeh; //as percentage
+        }
+
+        //crunch
+        if ((ch == 'C') || (GetAsyncKeyState('C') & 0x8000)) {
+            //elevation -= 5;
             did = 1;
         }
 #ifdef USE_MULTIPLE_KEYS_SIMULTANEOUSLY

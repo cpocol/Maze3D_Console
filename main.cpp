@@ -22,12 +22,13 @@ int H[screenW], WallID[screenW], TextureColumn[screenW];
 int Tan_fp[around]; //fp bits fixed point
 int cTan_fp[around];
 
-//initial viewer Current position and orientation
+//initial viewer Current position, orientation and elevation
 int xC = xInit;
 int yC = yInit;
 int angleC = angleInit;
+int elevation = 0; //percentage of sqSizeh
 
-int showMap = 1;
+int showMap = 0;
 
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
@@ -81,6 +82,8 @@ bool init() {
         memcpy(Texture + i*sqSize, str, sqSize);
     }
 
+    initController();
+
     return true;
 }
 
@@ -95,25 +98,27 @@ void renderMap() {
     
     screen[yPos][xPos] = 'P';
 
-	int dx[] = {+1, +1,  0, -1, -1, -1,  0, +1};
-	int dy[] = { 0, +1, +1, +1,  0, -1, -1, -1};
-	char dirs[] = R"(-\|/-\|/)";
+    int dx[] = {+1, +1,  0, -1, -1, -1,  0, +1};
+    int dy[] = { 0, +1, +1, +1,  0, -1, -1, -1};
+    char dirs[] = R"(-\|/-\|/)";
 
-	int ang = (angleC + around / 16) % around;
-	int a = ang / (around / 8);
-	int xDirPos = xPos + dx[a];
+    int ang = (angleC + around / 16) % around;
+    int a = ang / (around / 8);
+    int xDirPos = xPos + dx[a];
     int yDirPos = yPos + dy[a];
     if ((0 <= xDirPos) && (xDirPos < mapWidth) && (0 <= yDirPos) && (yDirPos < mapHeight))
-	    screen[yDirPos][xDirPos] = dirs[a];
+        screen[yDirPos][xDirPos] = dirs[a];
 
-	char str[100];
-	sprintf(str, "x = %d", xC);
-	strncpy((char*)screen + 0 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-	sprintf(str, "y = %d", yC);
-	strncpy((char*)screen + 1 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-	sprintf(str, "a = %d", angleC);
-	strncpy((char*)screen + 2 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-}	
+    char str[100];
+    sprintf(str, "x = %d", xC);
+    strncpy((char*)screen + 0 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+    sprintf(str, "y = %d", yC);
+    strncpy((char*)screen + 1 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+    sprintf(str, "a = %d", angleC);
+    strncpy((char*)screen + 2 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+    sprintf(str, "e = %d", elevation);
+    strncpy((char*)screen + 3 * (screenW + 1) + mapWidth + 1, str, strlen(str));
+}    
 
 //returns wall ID (as map position)
 int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
@@ -194,13 +199,16 @@ void RenderColumn(int col, int h, int textureColumn) {
     int Dh_fp = (sqSize << 20) / h; //1 row in screen space is this many rows in texture space; use fixed point
     int textureRow_fp = 0;
     int minRow = screenHh - h / 2;
+    minRow = ((100 - elevation) * minRow + elevation * screenHh) / 100;
     int maxRow = min(minRow + h, screenH);
-    if (minRow < 0) {
+
+    int minRowOrig = minRow;
+    if (minRow < 0) { //clip
         textureRow_fp = -(minRow * Dh_fp);
         minRow = 0;
     }
 
-    if (screenHh - h / 2 >= 0) { //top border visible
+    if (minRowOrig >= 0) { //top border visible
         screen[minRow][col] = '*';
         textureRow_fp += Dh_fp;
         minRow++;
@@ -311,7 +319,7 @@ void Render() {
     system("cls"); //clear the (real) screen
     screen[screenH - 1][screenW - 1] = 0; //avoid scrolling one row up when the screen is full
     printf("%s", (char*)screen);
-    Sleep(19); //tune this one to get less flickering on a specific PC
+    //Sleep(19); //tune this one to get less flickering on a specific PC
 }
 
 int main()
