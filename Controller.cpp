@@ -8,6 +8,16 @@
 #include "main.h"
 #include "Map.h"
 
+//jump/crunch
+int maxJumpHeight = int(1.1 * sqSizeh); //jump this high
+int maxCrunchHeight = -int(0.5 * sqSizeh); //crunch as most as this low
+float fFPS = 30; //approximate FPS
+int acceleratedMotion[200];
+int maxJump_idx, maxCrunch_idx;
+int verticalAdvance = 0;
+int jumping = 0, crunching = 0;
+int z = 0; //same unit as sqSize
+
 void move(int& x, int& y, int angle) {
     float rad = angle * 6.2831f / around;
     int xTest = x + int(MOVE_SPD * cos(rad));
@@ -46,18 +56,21 @@ void rotate(int& angle, int dir, int around) {
     angle = (angle + dir * ROTATE_SPD + around) % around;
 }
 
-int maxJumpHeight = int(1.1 * sqSizeh); //jump this high
-float fFPS = 30; //approximate FPS
-static int acceleratedMotion[200];
-
 void initController() {
-    float fDist = 0, fSpeed = 0, G = 4000;
+    float fDist = 0, fSpeed = 0, G = 8000; //G was empirically chosen as we don't have a proper world scale here
     for (int i = 0; i < 200; i++) {
         acceleratedMotion[i] = (int)fDist;
 
-        fSpeed += G / fFPS; //G was empirically chosen as we don't have a proper world scale here
+        fSpeed += G / fFPS;
         fDist += fSpeed / fFPS;
     }
+
+    //search for the acceleratedMotion entry so that we'll decelerate to zero speed at max jump height
+    for (maxJump_idx = 0; maxJump_idx < 200; maxJump_idx++)
+        if (acceleratedMotion[maxJump_idx] > maxJumpHeight)
+            break;
+
+	elevation = 100 * z / sqSizeh; //as percentage from wall half height
 }
 
 int loopController(int& x, int& y, int& angle, int around) {
@@ -104,53 +117,64 @@ int loopController(int& x, int& y, int& angle, int around) {
             did = 1;
         }
 
-        //jump
-        static int verticalAdvance = 0;
-        static int height_j, z;
-        int refreshVertMove = 1;
-        if (((ch == 'E') || (GetAsyncKeyState('E') & 0x8000)) && (verticalAdvance == 0)) {
+        //jump/crunch
+        static int jump_idx;
+        if (((ch == 'E') || (GetAsyncKeyState('E') & 0x8000)) && !jumping && !crunching) {
+			jumping = 1;
             verticalAdvance = 1;
-            //search for the acceleratedMotion entry so that we'll decelerate to zero speed at max jump height
-            for (height_j = 0; height_j < 200; height_j++)
-                if (acceleratedMotion[height_j] > maxJumpHeight)
-                    break;
-            z = max(0, maxJumpHeight - acceleratedMotion[height_j]);
+			jump_idx = maxJump_idx - 1;
+            z = maxJumpHeight - acceleratedMotion[jump_idx];
             did = 1;
         }
         else
-        if (verticalAdvance > 0) {
-            if (height_j > 0) {
-                height_j--;
-                z = maxJumpHeight - acceleratedMotion[height_j];
-            }
-            else {
-                verticalAdvance = -1;
-                z = maxJumpHeight;
-            }
-            did = 1;
-        }
-        else
-        if (verticalAdvance < 0) {
-            if (z > 0) {
-                height_j++;
-                z = max(0, maxJumpHeight - acceleratedMotion[height_j]);
-            }
-            else
-                verticalAdvance = 0;
-            did = 1;
-        }
-        else
-            refreshVertMove = 0;
-
-        if (refreshVertMove) {
-            elevation = 100 * z / sqSizeh; //as percentage
-        }
+		if (jumping) {
+			if (verticalAdvance > 0) {
+				if (jump_idx > 0) {
+					jump_idx--;
+					z = maxJumpHeight - acceleratedMotion[jump_idx];
+				}
+				else {
+					verticalAdvance = -1;
+					z = maxJumpHeight;
+				}
+				did = 1;
+			}
+			else
+			if (verticalAdvance < 0) {
+				if (z > 0) {
+					jump_idx++;
+					z = max(0, maxJumpHeight - acceleratedMotion[jump_idx]);
+				}
+				else {
+					verticalAdvance = 0;
+					jumping = 0;
+				}
+				did = 1;
+			}
+		}
 
         //crunch
-        if ((ch == 'C') || (GetAsyncKeyState('C') & 0x8000)) {
-            //elevation -= 5;
-            did = 1;
+        if (((ch == 'C') || (GetAsyncKeyState('C') & 0x8000)) && !jumping) {
+			crunching = 1;
+			if (z > maxCrunchHeight) {
+				z -= VERTICAL_SPD;
+				if (z < maxCrunchHeight)
+					z = maxCrunchHeight;
+		        did = 1;
+			}
         }
+		else
+		if (crunching) {
+			z += VERTICAL_SPD;
+			if (z >= 0) {
+				z = 0;
+				crunching = 0;
+			}
+			did = 1;
+		}
+        
+		elevation = 100 * z / sqSizeh; //as percentage from wall half height
+
 #ifdef USE_MULTIPLE_KEYS_SIMULTANEOUSLY
         {
 #else

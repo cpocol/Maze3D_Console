@@ -14,21 +14,21 @@
 
 
 const int mapSizeHeight = mapHeight * sqSize, mapSizeWidth = mapWidth * sqSize;
-const int mapSizeWidth_fp = (mapSizeWidth << fp), mapSizeHeight_fp = (mapSizeHeight << fp);
+const fptype mapSizeWidth_fp = (((fptype)mapSizeWidth) << fp), mapSizeHeight_fp = (((fptype)mapSizeHeight) << fp);
 char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
 char Texture[sqSize*sqSize];
 int H[screenW], WallID[screenW], TextureColumn[screenW];
 
-int Tan_fp[around]; //fp bits fixed point
-int cTan_fp[around];
+fptype Tan_fp[around]; //fp bits fixed point
+fptype cTan_fp[around];
 
 //initial viewer Current position, orientation and elevation
 int xC = xInit;
 int yC = yInit;
 int angleC = angleInit;
-int elevation = 0; //percentage of sqSizeh
+int elevation = 0; //as percentage from wall half height
 
-int showMap = 0;
+int showMap = 1;
 
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
@@ -41,20 +41,20 @@ bool init() {
         float angf = X2Rad(a);
 
         //tangent (theoretical range is [-inf..+inf], in practice (-128..+128) is fine)
-        float temp = tanf(angf) * (1 << fp);
-        Tan_fp[a] = (int)temp;
-        if (temp > (128 << fp) - 1)
-            Tan_fp[a] = (128 << fp) - 1;
-        if (temp < (-128 << fp) + 1)
-            Tan_fp[a] = (-128 << fp) + 1;
+        float temp = tanf(angf) * (((fptype)1) << fp);
+        Tan_fp[a] = (fptype)temp;
+        if (temp > (((fptype)128) << fp) - 1)
+            Tan_fp[a] = (((fptype)128) << fp) - 1;
+        if (temp < (-((fptype)128) << fp) + 1)
+            Tan_fp[a] = (-((fptype)128) << fp) + 1;
 
         //cotangent
-        temp = 1 / tanf(angf) * (1 << fp);
-        cTan_fp[a] = (int)temp;
-        if (temp > 128 * (1 << fp) - 1)
-            cTan_fp[a] = 128 * (1 << fp) - 1;
-        if (temp < -128 * (1 << fp) + 1)
-            cTan_fp[a] = -128 * (1 << fp) + 1;
+        temp = 1 / tanf(angf) * (((fptype)1) << fp);
+        cTan_fp[a] = (fptype)temp;
+        if (temp > (((fptype)128) << fp) - 1)
+            cTan_fp[a] = (((fptype)128) << fp) - 1;
+        if (temp < (-((fptype)128) << fp) + 1)
+            cTan_fp[a] = (-((fptype)128) << fp) + 1;
     }
 
     //load texture
@@ -110,15 +110,15 @@ void renderMap() {
         screen[yDirPos][xDirPos] = dirs[a];
 
     char str[100];
-    sprintf(str, "x = %d", xC);
-    strncpy((char*)screen + 0 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-    sprintf(str, "y = %d", yC);
-    strncpy((char*)screen + 1 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-    sprintf(str, "a = %d", angleC);
-    strncpy((char*)screen + 2 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-    sprintf(str, "e = %d", elevation);
-    strncpy((char*)screen + 3 * (screenW + 1) + mapWidth + 1, str, strlen(str));
-}    
+    sprintf(str, " x = %4d ", xC);
+    strncpy((char*)screen + 0 * (screenW + 1) + mapWidth + 0, str, strlen(str));
+    sprintf(str, " y = %4d ", yC);
+    strncpy((char*)screen + 1 * (screenW + 1) + mapWidth + 0, str, strlen(str));
+    sprintf(str, " a = %4d ", angleC);
+    strncpy((char*)screen + 2 * (screenW + 1) + mapWidth + 0, str, strlen(str));
+    sprintf(str, " e = %4d ", elevation);
+    strncpy((char*)screen + 3 * (screenW + 1) + mapWidth + 0, str, strlen(str));
+}
 
 //returns wall ID (as map position)
 int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
@@ -128,7 +128,7 @@ int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
     //prepare as for 1st or 4th quadrant
     xHit = (xC / sqSize) * sqSize + sqSize;
     int dx = sqSize,   adjXMap = 0;
-    int dy_fp = sqSize * Tan_fp[angle];
+    fptype dy_fp = sqSize * Tan_fp[angle];
     //2nd or 3rd quadrant
     if ((aroundq < angle) && (angle < around3q)) {
         xHit -= sqSize;
@@ -136,14 +136,14 @@ int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
         dx = -dx;
         dy_fp = -dy_fp;
     }
-    int yHit_fp = (yC << fp) + (xHit - xC) * Tan_fp[angle];
+    fptype yHit_fp = (((fptype)yC) << fp) + (xHit - xC) * Tan_fp[angle];
 
     while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit_fp) && (yHit_fp < mapSizeHeight_fp) &&
            (Map[(yHit_fp >> fp) / sqSize][xHit / sqSize + adjXMap] == 0)) {
         xHit += dx;
         yHit_fp += dy_fp;
     }
-    yHit = (yHit_fp >> fp);
+    yHit = int(yHit_fp >> fp);
 
     return (yHit / sqSize) * mapWidth + (xHit / sqSize + adjXMap);
 }
@@ -156,21 +156,21 @@ int CastY(int angle, int& xHit, int& yHit) { //   hit horizontal walls ==
     //prepare as for 1st or 2nd quadrant
     yHit = (yC / sqSize) * sqSize + sqSize;
     int dy = sqSize,   adjYMap = 0;
-    int dx_fp = sqSize * cTan_fp[angle];
+    fptype dx_fp = sqSize * cTan_fp[angle];
     if (angle > aroundh) { //3rd or 4th quadrants
         yHit -= sqSize;
         adjYMap = -1;
         dy = -dy;
         dx_fp = -dx_fp;
     }
-    int xHit_fp = (xC << fp) + (yHit - yC) * cTan_fp[angle];
+    fptype xHit_fp = (((fptype)xC) << fp) + (yHit - yC) * cTan_fp[angle];
 
     while ((0 < xHit_fp) && (xHit_fp < mapSizeWidth_fp) && (0 < yHit) && (yHit < mapSizeHeight) &&
            (Map[yHit / sqSize + adjYMap][(xHit_fp >> fp) / sqSize] == 0)) {
         xHit_fp += dx_fp;
         yHit += dy;
     }
-    xHit = (xHit_fp >> fp);
+    xHit = int(xHit_fp >> fp);
 
     return (yHit / sqSize + adjYMap) * mapWidth + (xHit / sqSize);
 }
@@ -195,11 +195,10 @@ int Cast(int angle, int& xHit, int& yHit) {
 
 void RenderColumn(int col, int h, int textureColumn) {
 //makes sure the borders are always drawn - it improves the "contrast" if rendered in console
-
     int Dh_fp = (sqSize << 20) / h; //1 row in screen space is this many rows in texture space; use fixed point
     int textureRow_fp = 0;
-    int minRow = screenHh - h / 2;
-    minRow = ((100 - elevation) * minRow + elevation * screenHh) / 100;
+    //int minRow = screenHh - h / 2;
+    int minRow = ((100 - elevation) * (2 * screenHh - h) / 2 + elevation * screenHh) / 100;
     int maxRow = min(minRow + h, screenH);
 
     int minRowOrig = minRow;
@@ -209,7 +208,8 @@ void RenderColumn(int col, int h, int textureColumn) {
     }
 
     if (minRowOrig >= 0) { //top border visible
-        screen[minRow][col] = '*';
+	    if (minRow < screenH)
+		    screen[minRow][col] = '*';
         textureRow_fp += Dh_fp;
         minRow++;
     }
@@ -226,17 +226,17 @@ void RenderColumn(int col, int h, int textureColumn) {
         screen[maxRow][col] = '*';
 
     //display debugging info
-//   char str[100];
-//   _itoa(H[col], str, 10);
-//   int startRow = minRow_p / 2;
-//   for (int row = startRow; row < startRow + (int)strlen(str); row++)
-//       screen[row][col] = str[row - startRow];
+   int startRow = minRow;
+   char str[100];
+   _itoa(WallID[col], str, 10);
+   //_itoa(h, str, 10);
+   for (int row = startRow; row < startRow + (int)strlen(str); row++)   screen[row][col] = str[row - startRow];
 }
 
 void Render() {
     memset(screen, ' ', sizeof(screen));
 
-    //pass 1: do the ray casting and store results
+    ///pass 1: do the ray casting and store results
     const int viewerToScreen_sq = sq(screenWh) * 3; //FOV = 60 degs => viewerToScreen = screenWh * sqrt(3)
     for (int col = 0; col < screenW; col++) {
         int ang = (screenWh - col + angleC + around) % around;
@@ -251,7 +251,21 @@ void Render() {
             H[col] = int(sqSize * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
     }
 
-    //pass 2: analyze and improve
+    ///pass 2: analyze and improve
+
+	//sometimes, the ray hits a cube exactly in its corner, thus there is an ambiguity about which face was hit
+	//fix it by a custom analyzis of local wall ids and heights
+    for (int col = 1; col < screenW - 1; col++) {
+		if ((WallID[col] / 2 == WallID[col + 1] / 2) && (WallID[col] / 2 != WallID[col - 1] / 2)
+			&& (abs(H[col - 1] - H[col + 1]) <= 1))
+			WallID[col] = WallID[col + 1];
+
+		if ((WallID[col] / 2 == WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)
+			&& (abs(H[col - 1] - H[col + 1]) <= 1))
+			WallID[col] = WallID[col - 1];
+	}
+
+	//decide border
     int drawnPrevBorder = 0;
     for (int col = 0; col < screenW; col++) {
         //!when using INVERT_COORDINATE_SYSTEM, next is prev and prev is next, they will be reverted later on
@@ -268,7 +282,7 @@ void Render() {
             }
     }
 
-    //pass 3: do rendering
+    ///pass 3: do rendering
     for (int col = 0; col < screenW; col++)
         RenderColumn(col, H[col], TextureColumn[col]);
 
@@ -290,7 +304,7 @@ void Render() {
             if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
                 || (screen[row][col] == ' ') || (screen[row][col] == '*'))
                 continue;
-            screen[row][col] = 'O';
+            //screen[row][col] = 'O';
         }
 
     //do anti-aliasing - use a small round character

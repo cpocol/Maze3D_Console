@@ -7,7 +7,7 @@
 #define ROTATE_SPD 5
 #define VERTICAL_SPD 5
 
-//(number of bits for sqSize (= texture size)) + fp + (1 bit for sign) + X <= 32
+//(number of bits for sqSize (= texture size)) + fp + (1 bit for sign) + X <= bits of fptype
 //where X = max((number of bits for mapSize), (number of bits for the integral part of tan/ctan))
 
 const int screenW = 80, screenH = 25, screenWh = screenW / 2, screenHh = screenH / 2;
@@ -15,7 +15,8 @@ const int around = 6 * screenW, aroundh = around / 2, aroundq = around / 4, arou
 
 const int sqSize = 128, sqSizeh = sqSize / 2; //must be the size of Texture
 
-const int fp = 17; //fixed point position
+typedef __int64 fptype;
+const int fp = 17 + 32; //fixed point position
 
 //viewer Current position, orientation and elevation
 extern int xC, yC, angleC;
