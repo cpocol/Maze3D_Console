@@ -24,8 +24,8 @@ void move(int& x, int& y, int angle) {
     int yTest = y + int(MOVE_SPD * sin(rad));
 
     //check for wall collision
-    int safetyX = ((aroundq < angle) && (angle < around3q)) ? +1 : -1;
-    int safetyY = (angle < aroundh) ? -1 : +1;
+    int safetyX = ((aroundq < angle) && (angle < around3q)) ? +safety_dist : -safety_dist;
+    int safetyY = (angle < aroundh) ? -safety_dist : +safety_dist;
     int adjXMap = ((aroundq < angle) && (angle < around3q)) ? -1 : 0;
     int adjYMap = (angle > aroundh) ? -1 : 0;
 
@@ -70,7 +70,7 @@ void initController() {
         if (acceleratedMotion[maxJump_idx] > maxJumpHeight)
             break;
 
-	elevation = 100 * z / sqSizeh; //as percentage from wall half height
+    elevation = 100 * z / sqSizeh; //as percentage from wall half height
 }
 
 int loopController(int& x, int& y, int& angle, int around) {
@@ -120,60 +120,60 @@ int loopController(int& x, int& y, int& angle, int around) {
         //jump/crunch
         static int jump_idx;
         if (((ch == 'E') || (GetAsyncKeyState('E') & 0x8000)) && !jumping && !crunching) {
-			jumping = 1;
+            jumping = 1;
             verticalAdvance = 1;
-			jump_idx = maxJump_idx - 1;
+            jump_idx = maxJump_idx - 1;
             z = maxJumpHeight - acceleratedMotion[jump_idx];
             did = 1;
         }
         else
-		if (jumping) {
-			if (verticalAdvance > 0) {
-				if (jump_idx > 0) {
-					jump_idx--;
-					z = maxJumpHeight - acceleratedMotion[jump_idx];
-				}
-				else {
-					verticalAdvance = -1;
-					z = maxJumpHeight;
-				}
-				did = 1;
-			}
-			else
-			if (verticalAdvance < 0) {
-				if (z > 0) {
-					jump_idx++;
-					z = max(0, maxJumpHeight - acceleratedMotion[jump_idx]);
-				}
-				else {
-					verticalAdvance = 0;
-					jumping = 0;
-				}
-				did = 1;
-			}
-		}
+        if (jumping) {
+            if (verticalAdvance > 0) {
+                if (jump_idx > 0) {
+                    jump_idx--;
+                    z = maxJumpHeight - acceleratedMotion[jump_idx];
+                }
+                else {
+                    verticalAdvance = -1;
+                    z = maxJumpHeight;
+                }
+                did = 1;
+            }
+            else
+            if (verticalAdvance < 0) {
+                if (z > 0) {
+                    jump_idx++;
+                    z = max(0, maxJumpHeight - acceleratedMotion[jump_idx]);
+                }
+                else {
+                    verticalAdvance = 0;
+                    jumping = 0;
+                }
+                did = 1;
+            }
+        }
 
         //crunch
         if (((ch == 'C') || (GetAsyncKeyState('C') & 0x8000)) && !jumping) {
-			crunching = 1;
-			if (z > maxCrunchHeight) {
-				z -= VERTICAL_SPD;
-				if (z < maxCrunchHeight)
-					z = maxCrunchHeight;
-		        did = 1;
-			}
+            crunching = 1;
+            if (z > maxCrunchHeight) {
+                z -= VERTICAL_SPD;
+                if (z < maxCrunchHeight)
+                    z = maxCrunchHeight;
+                did = 1;
+            }
         }
-		else
-		if (crunching) {
-			z += VERTICAL_SPD;
-			if (z >= 0) {
-				z = 0;
-				crunching = 0;
-			}
-			did = 1;
-		}
+        else
+        if (crunching) {
+            z += VERTICAL_SPD;
+            if (z >= 0) {
+                z = 0;
+                crunching = 0;
+            }
+            did = 1;
+        }
         
-		elevation = 100 * z / sqSizeh; //as percentage from wall half height
+        elevation = 100 * z / sqSizeh; //as percentage from wall half height
 
 #ifdef USE_MULTIPLE_KEYS_SIMULTANEOUSLY
         {

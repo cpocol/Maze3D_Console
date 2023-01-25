@@ -20,7 +20,7 @@ char Texture[sqSize*sqSize];
 int H[screenW], WallID[screenW], TextureColumn[screenW];
 
 fptype Tan_fp[around]; //fp bits fixed point
-fptype cTan_fp[around];
+fptype CTan_fp[around];
 
 //initial viewer Current position, orientation and elevation
 int xC = xInit;
@@ -50,11 +50,11 @@ bool init() {
 
         //cotangent
         temp = 1 / tanf(angf) * (((fptype)1) << fp);
-        cTan_fp[a] = (fptype)temp;
+        CTan_fp[a] = (fptype)temp;
         if (temp > (((fptype)128) << fp) - 1)
-            cTan_fp[a] = (((fptype)128) << fp) - 1;
+            CTan_fp[a] = (((fptype)128) << fp) - 1;
         if (temp < (-((fptype)128) << fp) + 1)
-            cTan_fp[a] = (-((fptype)128) << fp) + 1;
+            CTan_fp[a] = (-((fptype)128) << fp) + 1;
     }
 
     //load texture
@@ -121,74 +121,76 @@ void renderMap() {
 }
 
 //returns wall ID (as map position)
-int CastX(int angle, int& xHit, int& yHit) { //   hit vertical walls ||
+int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit vertical walls ||
     if ((angle == aroundq) || (angle == around3q))
         return -1; //CastY() will hit a wall correctly
 
     //prepare as for 1st or 4th quadrant
-    xHit = (xC / sqSize) * sqSize + sqSize;
+    int x = (xC / sqSize) * sqSize + sqSize;
     int dx = sqSize,   adjXMap = 0;
     fptype dy_fp = sqSize * Tan_fp[angle];
     //2nd or 3rd quadrant
     if ((aroundq < angle) && (angle < around3q)) {
-        xHit -= sqSize;
+        x -= sqSize;
         adjXMap = -1;
         dx = -dx;
         dy_fp = -dy_fp;
     }
-    fptype yHit_fp = (((fptype)yC) << fp) + (xHit - xC) * Tan_fp[angle];
+    yHit_fp = (((fptype)yC) << fp) + (x - xC) * Tan_fp[angle];
 
-    while ((0 < xHit) && (xHit < mapSizeWidth) && (0 < yHit_fp) && (yHit_fp < mapSizeHeight_fp) &&
-           (Map[(yHit_fp >> fp) / sqSize][xHit / sqSize + adjXMap] == 0)) {
-        xHit += dx;
+    while ((0 < x) && (x < mapSizeWidth) && (0 < yHit_fp) && (yHit_fp < mapSizeHeight_fp) &&
+           (Map[(yHit_fp >> fp) / sqSize][x / sqSize + adjXMap] == 0)) {
+        x += dx;
         yHit_fp += dy_fp;
     }
-    yHit = int(yHit_fp >> fp);
 
-    return (yHit / sqSize) * mapWidth + (xHit / sqSize + adjXMap);
+    xHit_fp = (fptype)x << fp;
+
+    return int((yHit_fp / sqSize_fp) * mapWidth + (x / sqSize + adjXMap));
 }
 
 //returns wall ID (as map position)
-int CastY(int angle, int& xHit, int& yHit) { //   hit horizontal walls ==
+int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal walls ==
     if ((angle == 0) || (angle == aroundh))
         return -1; //CastX() will hit a wall correctly
 
     //prepare as for 1st or 2nd quadrant
-    yHit = (yC / sqSize) * sqSize + sqSize;
+    int y = (yC / sqSize) * sqSize + sqSize;
     int dy = sqSize,   adjYMap = 0;
-    fptype dx_fp = sqSize * cTan_fp[angle];
+    fptype dx_fp = sqSize * CTan_fp[angle];
     if (angle > aroundh) { //3rd or 4th quadrants
-        yHit -= sqSize;
+        y -= sqSize;
         adjYMap = -1;
         dy = -dy;
         dx_fp = -dx_fp;
     }
-    fptype xHit_fp = (((fptype)xC) << fp) + (yHit - yC) * cTan_fp[angle];
+    xHit_fp = (((fptype)xC) << fp) + (y - yC) * CTan_fp[angle];
 
-    while ((0 < xHit_fp) && (xHit_fp < mapSizeWidth_fp) && (0 < yHit) && (yHit < mapSizeHeight) &&
-           (Map[yHit / sqSize + adjYMap][(xHit_fp >> fp) / sqSize] == 0)) {
+    while ((0 < xHit_fp) && (xHit_fp < mapSizeWidth_fp) && (0 < y) && (y < mapSizeHeight) &&
+           (Map[y / sqSize + adjYMap][(xHit_fp >> fp) / sqSize] == 0)) {
         xHit_fp += dx_fp;
-        yHit += dy;
+        y += dy;
     }
-    xHit = int(xHit_fp >> fp);
 
-    return (yHit / sqSize + adjYMap) * mapWidth + (xHit / sqSize);
+    yHit_fp = (fptype)y << fp; 
+
+    return int((y / sqSize + adjYMap) * mapWidth + (xHit_fp / sqSize_fp));
 }
 
 //returns wall ID (as map position)
 int Cast(int angle, int& xHit, int& yHit) {
-    int xX = 1000000, yX = 1000000, xY = 1000000, yY = 1000000;
-    int wallIDX = CastX(angle, xX, yX);
-    int wallIDY = CastY(angle, xY, yY);
+    fptype xX_fp = 1000000000, yX_fp = 1000000000, xY_fp = 1000000000, yY_fp = 1000000000;
+    int wallIDX = CastX(angle, xX_fp, yX_fp);
+    int wallIDY = CastY(angle, xY_fp, yY_fp);
     //choose the nearest hit point
-    if (abs(xC - xX) < abs(xC - xY)) { //vertical wall ||
-        xHit = xX;
-        yHit = yX;
+    if (llabs(((fptype)xC << fp) - xX_fp) < llabs(((fptype)xC << fp) - xY_fp)) { //vertical wall ||
+        xHit = int(xX_fp >> fp);
+        yHit = int(yX_fp >> fp);
         return 2 * wallIDX + 0;
     }
     else { //horizontal wall ==
-        xHit = xY;
-        yHit = yY;
+        xHit = int(xY_fp >> fp);
+        yHit = int(yY_fp >> fp);
         return 2 * wallIDY + 1;
     }
 }
@@ -208,8 +210,8 @@ void RenderColumn(int col, int h, int textureColumn) {
     }
 
     if (minRowOrig >= 0) { //top border visible
-	    if (minRow < screenH)
-		    screen[minRow][col] = '*';
+        if (minRow < screenH)
+            screen[minRow][col] = '*';
         textureRow_fp += Dh_fp;
         minRow++;
     }
@@ -230,7 +232,7 @@ void RenderColumn(int col, int h, int textureColumn) {
    char str[100];
    _itoa(WallID[col], str, 10);
    //_itoa(h, str, 10);
-   for (int row = startRow; row < startRow + (int)strlen(str); row++)   screen[row][col] = str[row - startRow];
+   //for (int row = startRow; row < startRow + (int)strlen(str); row++)   screen[row][col] = str[row - startRow];
 }
 
 void Render() {
@@ -253,19 +255,26 @@ void Render() {
 
     ///pass 2: analyze and improve
 
-	//sometimes, the ray hits a cube exactly in its corner, thus there is an ambiguity about which face was hit
-	//fix it by a custom analyzis of local wall ids and heights
-    for (int col = 1; col < screenW - 1; col++) {
-		if ((WallID[col] / 2 == WallID[col + 1] / 2) && (WallID[col] / 2 != WallID[col - 1] / 2)
-			&& (abs(H[col - 1] - H[col + 1]) <= 1))
-			WallID[col] = WallID[col + 1];
+    //sometimes, the ray hits a cube exactly in its corner, thus there is an ambiguity about which face was hit
+    //fix it by a custom analyzis of local wall ids and heights
+    //for (int col = 1; col < screenW - 1; col++) {
+    //    if ((WallID[col] / 2 == WallID[col + 1] / 2) && (WallID[col] / 2 != WallID[col - 1] / 2)
+    //        && (abs(H[col - 1] - H[col + 1]) <= 1))
+    //        WallID[col] = WallID[col + 1];
 
-		if ((WallID[col] / 2 == WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)
-			&& (abs(H[col - 1] - H[col + 1]) <= 1))
-			WallID[col] = WallID[col - 1];
-	}
+    //    if ((WallID[col] / 2 == WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)
+    //        && (abs(H[col - 1] - H[col + 1]) <= 1))
+    //        WallID[col] = WallID[col - 1];
 
-	//decide border
+    //    int row1  = (WallID[col + 1] / 2) / mapWidth;
+    //    int row_1 = (WallID[col - 1] / 2) / mapWidth;
+    //    int col1  = (WallID[col + 1] / 2) % mapWidth;
+    //    int col_1 = (WallID[col - 1] / 2) % mapWidth;
+    //    if ((WallID[col] / 2 != WallID[col + 1] / 2) && (abs(row1 - row_1) <= 1 || abs(col1 - col_1) <= 1))
+    //        WallID[col] = WallID[col - 1];
+    //}
+
+    //decide border
     int drawnPrevBorder = 0;
     for (int col = 0; col < screenW; col++) {
         //!when using INVERT_COORDINATE_SYSTEM, next is prev and prev is next, they will be reverted later on
@@ -304,7 +313,7 @@ void Render() {
             if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
                 || (screen[row][col] == ' ') || (screen[row][col] == '*'))
                 continue;
-            //screen[row][col] = 'O';
+            screen[row][col] = 'O';
         }
 
     //do anti-aliasing - use a small round character

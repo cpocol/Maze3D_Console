@@ -10,13 +10,15 @@
 //(number of bits for sqSize (= texture size)) + fp + (1 bit for sign) + X <= bits of fptype
 //where X = max((number of bits for mapSize), (number of bits for the integral part of tan/ctan))
 
+typedef __int32 fptype;
+const int fp = 17; //fixed point position
+
 const int screenW = 80, screenH = 25, screenWh = screenW / 2, screenHh = screenH / 2;
 const int around = 6 * screenW, aroundh = around / 2, aroundq = around / 4, around3q = 3 * aroundq; //FOV = 60 degs (6 FOVs = 360 degrees)
 
 const int sqSize = 128, sqSizeh = sqSize / 2; //must be the size of Texture
-
-typedef __int64 fptype;
-const int fp = 17 + 32; //fixed point position
+const fptype sqSize_fp = (fptype)sqSize << fp;
+const int safety_dist = 3; //to wall
 
 //viewer Current position, orientation and elevation
 extern int xC, yC, angleC;
