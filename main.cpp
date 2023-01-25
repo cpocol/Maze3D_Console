@@ -30,6 +30,8 @@ int elevation = 0; //as percentage from wall half height
 
 int showMap = 1;
 
+HANDLE hConsole;
+
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
 }
@@ -82,6 +84,11 @@ bool init() {
         memcpy(Texture + i*sqSize, str, sqSize);
     }
 
+#ifdef ACCESS_CONSOLE_DIRECTLY
+    hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+	SetConsoleActiveScreenBuffer(hConsole);
+#endif
+
     initController();
 
     return true;
@@ -95,7 +102,7 @@ void renderMap() {
             else
                 screen[y][x] = 'W';
     int xPos = xC / sqSize, yPos = yC / sqSize;
-    
+
     screen[yPos][xPos] = 'P';
 
     int dx[] = {+1, +1,  0, -1, -1, -1,  0, +1};
@@ -172,7 +179,7 @@ int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal wal
         y += dy;
     }
 
-    yHit_fp = (fptype)y << fp; 
+    yHit_fp = (fptype)y << fp;
 
     return int((y / sqSize + adjYMap) * mapWidth + (xHit_fp / sqSize_fp));
 }
@@ -336,10 +343,20 @@ void Render() {
         renderMap();
 
     //flush the screen matrix onto the real screen
-    system("cls"); //clear the (real) screen
+#ifdef ACCESS_CONSOLE_DIRECTLY
+    DWORD dwBytesWritten;
+    for (int line = 0; line < screenH; line++) {
+        wchar_t scr[screenW];
+        for (int col = 0; col < screenW; col++) //convert to wchar_t
+            scr[col] = screen[line][col];
+        WriteConsoleOutputCharacter(hConsole, (wchar_t*)scr, screenW, { 0, (short)line }, &dwBytesWritten);
+    }
+    Sleep(20); //it's far too fast :)
+#else
     screen[screenH - 1][screenW - 1] = 0; //avoid scrolling one row up when the screen is full
+    system("cls"); //clear the (real) screen
     printf("%s", (char*)screen);
-    //Sleep(19); //tune this one to get less flickering on a specific PC
+#endif
 }
 
 int main()
