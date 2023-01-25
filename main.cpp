@@ -246,11 +246,8 @@ void Render() {
         WallID[col] = Cast(ang, xHit, yHit);
 
         TextureColumn[col] = (xHit + yHit) % sqSize;
-        int dist_sq = sq(xC - xHit) + sq(yC - yHit);
-        if (dist_sq == 0)
-            H[col] = 10000;
-        else
-            H[col] = int(sqSize * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
+        int dist_sq = sq(xC - xHit) + sq(yC - yHit) + 1; //+1 avoids division by zero
+        H[col] = int(sqSize * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
     }
 
     ///pass 2: analyze and improve

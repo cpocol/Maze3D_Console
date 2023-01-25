@@ -2,6 +2,7 @@
 #include <conio.h>
 #include <ctype.h>
 #include <math.h>
+#include <time.h>
 #include <windows.h>
 #include "Config.h"
 #include "Controller.h"
@@ -17,6 +18,7 @@ int maxJump_idx, maxCrunch_idx;
 int verticalAdvance = 0;
 int jumping = 0, crunching = 0;
 int z = 0; //same unit as sqSize
+static clock_t keyTime = clock();
 
 void move(int& x, int& y, int angle) {
     float rad = angle * 6.2831f / around;
@@ -97,8 +99,11 @@ int loopController(int& x, int& y, int& angle, int around) {
             did = 1;
         }
         if ((ch == 'M') || (GetAsyncKeyState('M') & 0x8000)) { //show/hide map
-            showMap = 1 - showMap;
-            did = 1;
+            if (float(clock() - keyTime) / CLOCKS_PER_SEC > 0.2f) { //avoid quick map show/hide
+                keyTime = clock();
+                showMap = 1 - showMap;
+                did = 1;
+            }
         }
         if ((ch == 'W') || (GetAsyncKeyState('W') & 0x8000)) { //pedal forward
             move(x, y, angle);
