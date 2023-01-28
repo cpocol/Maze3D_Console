@@ -4,26 +4,28 @@
 #define USE_MULTIPLE_KEYS_SIMULTANEOUSLY
 #define ACCESS_CONSOLE_DIRECTLY //avoids flickering
 
-#define MOVE_SPD 20
-#define ROTATE_SPD 5
-#define VERTICAL_SPD 5
+#define MOVE_SPD (10 * sqRes / 100)
+#define ROTATE_SPD 4
+#define VERTICAL_SPD (sqRes/25)
 
-//(number of bits for sqSize (= texture size)) + fp + (1 bit for sign) + X <= bits of fptype
+//(number of bits for sqRes (= texture size)) + fp + (1 bit for sign) + X <= bits of fptype
 //where X = max((number of bits for mapSize), (number of bits for the integral part of tan/ctan))
 
+const int fp = 14; //fixed point position
 typedef __int32 fptype;
-const int fp = 17; //fixed point position
 
 const int screenW = 80, screenH = 25, screenWh = screenW / 2, screenHh = screenH / 2;
 const int around = 6 * screenW, aroundh = around / 2, aroundq = around / 4, around3q = 3 * aroundq; //FOV = 60 degs (6 FOVs = 360 degrees)
 
-const int sqSize = 128, sqSizeh = sqSize / 2; //must be the size of Texture
-const fptype sqSize_fp = (fptype)sqSize << fp;
+const int sqRes = (1 << 10), sqResh = sqRes / 2;
+const fptype sqRes_fp = (fptype)sqRes << fp;
 const int safety_dist = 3; //to wall
 
-//viewer Current position, orientation and elevation
+const int texRes = (1 << 7);
+
+//viewer Current position, orientation and elevation_perc
 extern int xC, yC, angleC;
-const int xInit = int(2.5 * sqSize), yInit = int(2.5 * sqSize), angleInit = 10;
-extern int elevation; //percentage
+const int xInit = int(2.5 * sqRes), yInit = int(2.5 * sqRes), angleInit = 10;
+extern int elevation_perc; //percentage
 
 extern int showMap;

@@ -10,14 +10,14 @@
 #include "Map.h"
 
 //jump/crunch
-int maxJumpHeight = int(1.1 * sqSizeh); //jump this high
-int maxCrunchHeight = -int(0.5 * sqSizeh); //crunch as most as this low
+int maxJumpHeight = int(1.1 * sqResh); //jump this high
+int maxCrunchHeight = -int(0.5 * sqResh); //crunch as most as this low
 float fFPS = 30; //approximate FPS
 int acceleratedMotion[200];
 int maxJump_idx, maxCrunch_idx;
 int verticalAdvance = 0;
 int jumping = 0, crunching = 0;
-int z = 0; //same unit as sqSize
+int z = 0; //same unit as sqRes
 static clock_t keyTime = clock();
 
 void move(int& x, int& y, int angle) {
@@ -39,15 +39,15 @@ void move(int& x, int& y, int angle) {
         {
             x = xWall + safetyX;
             y = yTest;                                      //               __
-            if (Map[y / sqSize][x / sqSize] != 0) //it's a corner |
-                y = (yTest / sqSize - adjYMap) * sqSize + safetyY;
+            if (Map[y / sqRes][x / sqRes] != 0) //it's a corner |
+                y = (yTest / sqRes - adjYMap) * sqRes + safetyY;
         }
         else //horizontal wall ==
         {
             x = xTest;
             y = yWall + safetyY;                            //               __
-            if (Map[y / sqSize][x / sqSize] != 0) //it's a corner |
-                x = (xTest / sqSize - adjXMap) * sqSize + safetyX;
+            if (Map[y / sqRes][x / sqRes] != 0) //it's a corner |
+                x = (xTest / sqRes - adjXMap) * sqRes + safetyX;
         }
     }
     else //free cell
@@ -59,7 +59,7 @@ void rotate(int& angle, int dir, int around) {
 }
 
 void initController() {
-    float fDist = 0, fSpeed = 0, G = 8000; //G was empirically chosen as we don't have a proper world scale here
+    float fDist = 0, fSpeed = 0, G = 8000.f * sqRes / 200; //G was empirically chosen as we don't have a proper world scale here
     for (int i = 0; i < 200; i++) {
         acceleratedMotion[i] = (int)fDist;
 
@@ -72,7 +72,9 @@ void initController() {
         if (acceleratedMotion[maxJump_idx] > maxJumpHeight)
             break;
 
-    elevation = 100 * z / sqSizeh; //as percentage from wall half height
+    if (maxJump_idx >= 200) maxJump_idx = 199;
+
+    elevation_perc = 100 * z / sqResh; //as percentage from wall half height
 }
 
 int loopController(int& x, int& y, int& angle, int around) {
@@ -178,7 +180,7 @@ int loopController(int& x, int& y, int& angle, int around) {
             did = 1;
         }
         
-        elevation = 100 * z / sqSizeh; //as percentage from wall half height
+        elevation_perc = 100 * z / sqResh; //as percentage from wall half height
 
 #ifdef USE_MULTIPLE_KEYS_SIMULTANEOUSLY
         {

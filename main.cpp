@@ -13,22 +13,22 @@
 #include "Map.h"
 
 
-const int mapSizeHeight = mapHeight * sqSize, mapSizeWidth = mapWidth * sqSize;
+const int mapSizeHeight = mapHeight * sqRes, mapSizeWidth = mapWidth * sqRes;
 const fptype mapSizeWidth_fp = (((fptype)mapSizeWidth) << fp), mapSizeHeight_fp = (((fptype)mapSizeHeight) << fp);
 char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
-char Texture[sqSize*sqSize];
+char Texture[texRes*texRes];
 int H[screenW], WallID[screenW], TextureColumn[screenW];
 
 fptype Tan_fp[around]; //fp bits fixed point
 fptype CTan_fp[around];
 
-//initial viewer Current position, orientation and elevation
+//initial viewer Current position, orientation and elevation_perc
 int xC = xInit;
 int yC = yInit;
 int angleC = angleInit;
-int elevation = 0; //as percentage from wall half height
+int elevation_perc = 0; //as percentage from wall half height
 
-int showMap = 1;
+int showMap = 0;
 
 HANDLE hConsole;
 
@@ -43,50 +43,51 @@ bool init() {
         float angf = X2Rad(a);
 
         //tangent (theoretical range is [-inf..+inf], in practice (-128..+128) is fine)
+        fptype maxTan = (((fptype)128) << fp) - 1;
         float temp = tanf(angf) * (((fptype)1) << fp);
         Tan_fp[a] = (fptype)temp;
-        if (temp > (((fptype)128) << fp) - 1)
-            Tan_fp[a] = (((fptype)128) << fp) - 1;
-        if (temp < (-((fptype)128) << fp) + 1)
-            Tan_fp[a] = (-((fptype)128) << fp) + 1;
+        if (temp > maxTan)
+            Tan_fp[a] = maxTan;
+        if (temp < -maxTan)
+            Tan_fp[a] = -maxTan;
 
         //cotangent
         temp = 1 / tanf(angf) * (((fptype)1) << fp);
         CTan_fp[a] = (fptype)temp;
-        if (temp > (((fptype)128) << fp) - 1)
-            CTan_fp[a] = (((fptype)128) << fp) - 1;
-        if (temp < (-((fptype)128) << fp) + 1)
-            CTan_fp[a] = (-((fptype)128) << fp) + 1;
+        if (temp > maxTan)
+            CTan_fp[a] = maxTan;
+        if (temp < -maxTan)
+            CTan_fp[a] = -maxTan;
     }
 
     //load texture
     FILE* pF = fopen("diamond.txt", "r");
     if (!pF) {
-        printf("Texture file can't be open\n");
+        printf("Texture file can't be opened\n");
         return false;
     }
 
-    for (i = 0; i < sqSize; i++) {
-        char str[sqSize + 10];
+    for (i = 0; i < texRes; i++) {
+        char str[texRes + 10];
         memset(str, -1, sizeof(str));
-        fgets(str, sqSize + 5, pF);
+        fgets(str, texRes + 5, pF);
         //check input
-        for (j = 0; j < 128; j++)
+        for (j = 0; j < texRes; j++)
             if (str[j] == 0 || str[j] == 10) {
-                printf("Texture error on line %d; line ends at char %d\n", i, j);
+                printf("Texture error on line %d; line ends at column %d\n", i, j);
                 return false;
             }
-        if (!(str[128 + (i < sqSize - 1)] == 0)) {
+        if (!(str[texRes + (i < texRes - 1)] == 0)) {
             printf("Texture error on line %d; line too long\n", i);
             return false;
         }
 
-        memcpy(Texture + i*sqSize, str, sqSize);
+        memcpy(Texture + i*texRes, str, texRes);
     }
 
 #ifdef ACCESS_CONSOLE_DIRECTLY
     hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-	SetConsoleActiveScreenBuffer(hConsole);
+    SetConsoleActiveScreenBuffer(hConsole);
 #endif
 
     initController();
@@ -101,7 +102,7 @@ void renderMap() {
                 screen[y][x] = ' ';
             else
                 screen[y][x] = 'W';
-    int xPos = xC / sqSize, yPos = yC / sqSize;
+    int xPos = xC / sqRes, yPos = yC / sqRes;
 
     screen[yPos][xPos] = 'P';
 
@@ -123,22 +124,22 @@ void renderMap() {
     strncpy((char*)screen + 1 * (screenW + 1) + mapWidth + 0, str, strlen(str));
     sprintf(str, " a = %4d ", angleC);
     strncpy((char*)screen + 2 * (screenW + 1) + mapWidth + 0, str, strlen(str));
-    sprintf(str, " e = %4d ", elevation);
+    sprintf(str, " e = %4d ", elevation_perc);
     strncpy((char*)screen + 3 * (screenW + 1) + mapWidth + 0, str, strlen(str));
 }
 
-//returns wall ID (as map position)
+//returns wall ID (as map position and cell face)
 int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit vertical walls ||
     if ((angle == aroundq) || (angle == around3q))
         return -1; //CastY() will hit a wall correctly
 
     //prepare as for 1st or 4th quadrant
-    int x = (xC / sqSize) * sqSize + sqSize;
-    int dx = sqSize,   adjXMap = 0;
-    fptype dy_fp = sqSize * Tan_fp[angle];
+    int x = (xC / sqRes) * sqRes + sqRes;
+    int dx = sqRes,   adjXMap = 0;
+    fptype dy_fp = sqRes * Tan_fp[angle];
     //2nd or 3rd quadrant
     if ((aroundq < angle) && (angle < around3q)) {
-        x -= sqSize;
+        x -= sqRes;
         adjXMap = -1;
         dx = -dx;
         dy_fp = -dy_fp;
@@ -146,27 +147,27 @@ int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit vertical walls
     yHit_fp = (((fptype)yC) << fp) + (x - xC) * Tan_fp[angle];
 
     while ((0 < x) && (x < mapSizeWidth) && (0 < yHit_fp) && (yHit_fp < mapSizeHeight_fp) &&
-           (Map[(yHit_fp >> fp) / sqSize][x / sqSize + adjXMap] == 0)) {
+           (Map[(yHit_fp >> fp) / sqRes][x / sqRes + adjXMap] == 0)) {
         x += dx;
         yHit_fp += dy_fp;
     }
 
     xHit_fp = (fptype)x << fp;
 
-    return int((yHit_fp / sqSize_fp) * mapWidth + (x / sqSize + adjXMap));
+    return int((yHit_fp / sqRes_fp) * mapWidth + (x / sqRes + adjXMap));
 }
 
-//returns wall ID (as map position)
+//returns wall ID (as map position and cell face)
 int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal walls ==
     if ((angle == 0) || (angle == aroundh))
         return -1; //CastX() will hit a wall correctly
 
     //prepare as for 1st or 2nd quadrant
-    int y = (yC / sqSize) * sqSize + sqSize;
-    int dy = sqSize,   adjYMap = 0;
-    fptype dx_fp = sqSize * CTan_fp[angle];
+    int y = (yC / sqRes) * sqRes + sqRes;
+    int dy = sqRes,   adjYMap = 0;
+    fptype dx_fp = sqRes * CTan_fp[angle];
     if (angle > aroundh) { //3rd or 4th quadrants
-        y -= sqSize;
+        y -= sqRes;
         adjYMap = -1;
         dy = -dy;
         dx_fp = -dx_fp;
@@ -174,19 +175,19 @@ int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal wal
     xHit_fp = (((fptype)xC) << fp) + (y - yC) * CTan_fp[angle];
 
     while ((0 < xHit_fp) && (xHit_fp < mapSizeWidth_fp) && (0 < y) && (y < mapSizeHeight) &&
-           (Map[y / sqSize + adjYMap][(xHit_fp >> fp) / sqSize] == 0)) {
+           (Map[y / sqRes + adjYMap][(xHit_fp >> fp) / sqRes] == 0)) {
         xHit_fp += dx_fp;
         y += dy;
     }
 
     yHit_fp = (fptype)y << fp;
 
-    return int((y / sqSize + adjYMap) * mapWidth + (xHit_fp / sqSize_fp));
+    return int((y / sqRes + adjYMap) * mapWidth + (xHit_fp / sqRes_fp));
 }
 
-//returns wall ID (as map position)
+//returns wall ID (as map position and cell face)
 int Cast(int angle, int& xHit, int& yHit) {
-    fptype xX_fp = 1000000000, yX_fp = 1000000000, xY_fp = 1000000000, yY_fp = 1000000000;
+    fptype xX_fp = 1000000000, yX_fp = xX_fp, xY_fp = xX_fp, yY_fp = xX_fp;
     int wallIDX = CastX(angle, xX_fp, yX_fp);
     int wallIDY = CastY(angle, xY_fp, yY_fp);
     //choose the nearest hit point
@@ -202,17 +203,25 @@ int Cast(int angle, int& xHit, int& yHit) {
     }
 }
 
+void PrintVerticalText(int col, int row, char text[]) {
+   for (int r = row; r < row + (int)strlen(text); r++)
+       if (0 <= r && r < screenH && 0 <= col && col < screenW)
+           screen[r][col] = text[r - row];
+}
+
 void RenderColumn(int col, int h, int textureColumn) {
 //makes sure the borders are always drawn - it improves the "contrast" if rendered in console
-    int Dh_fp = (sqSize << 20) / h; //1 row in screen space is this many rows in texture space; use fixed point
+    int Dh_fp = (texRes << 22) / h; //1 row in screen space is this many rows in texture space; use fixed point
     int textureRow_fp = 0;
+    int a = 0;
     //int minRow = screenHh - h / 2;
-    int minRow = ((100 - elevation) * (2 * screenHh - h) / 2 + elevation * screenHh) / 100;
+    int minRow = ((100 - elevation_perc) * (2 * screenHh - h) / 2 + elevation_perc * screenHh) / 100;
     int maxRow = min(minRow + h, screenH);
 
     int minRowOrig = minRow;
     if (minRow < 0) { //clip
         textureRow_fp = -(minRow * Dh_fp);
+        a = textureRow_fp >> 22;
         minRow = 0;
     }
 
@@ -226,7 +235,7 @@ void RenderColumn(int col, int h, int textureColumn) {
     char pixel = '*';
     for (int row = minRow; row < maxRow; row++) {
         if (textureColumn != -1) //not lateral border
-            pixel = *(Texture + (textureRow_fp >> 20) * sqSize + textureColumn);
+            pixel = *(Texture + (textureRow_fp >> 22) * texRes + textureColumn);
         screen[row][col] = pixel;
         textureRow_fp += Dh_fp;
     }
@@ -235,11 +244,10 @@ void RenderColumn(int col, int h, int textureColumn) {
         screen[maxRow][col] = '*';
 
     //display debugging info
-   int startRow = minRow;
-   char str[100];
-   _itoa(WallID[col], str, 10);
-   //_itoa(h, str, 10);
-   //for (int row = startRow; row < startRow + (int)strlen(str); row++)   screen[row][col] = str[row - startRow];
+    char str[100];
+    _itoa(WallID[col], str, 10);
+    _itoa(minRowOrig, str, 10);
+    //PrintVerticalText(col, minRow, str);
 }
 
 void Render() {
@@ -252,31 +260,12 @@ void Render() {
         int xHit, yHit;
         WallID[col] = Cast(ang, xHit, yHit);
 
-        TextureColumn[col] = (xHit + yHit) % sqSize;
+        TextureColumn[col] = ((xHit + yHit) % sqRes) * texRes / sqRes;
         int dist_sq = sq(xC - xHit) + sq(yC - yHit) + 1; //+1 avoids division by zero
-        H[col] = int(sqSize * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
+        H[col] = int(sqRes * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
     }
 
     ///pass 2: analyze and improve
-
-    //sometimes, the ray hits a cube exactly in its corner, thus there is an ambiguity about which face was hit
-    //fix it by a custom analyzis of local wall ids and heights
-    //for (int col = 1; col < screenW - 1; col++) {
-    //    if ((WallID[col] / 2 == WallID[col + 1] / 2) && (WallID[col] / 2 != WallID[col - 1] / 2)
-    //        && (abs(H[col - 1] - H[col + 1]) <= 1))
-    //        WallID[col] = WallID[col + 1];
-
-    //    if ((WallID[col] / 2 == WallID[col - 1] / 2) && (WallID[col] / 2 != WallID[col + 1] / 2)
-    //        && (abs(H[col - 1] - H[col + 1]) <= 1))
-    //        WallID[col] = WallID[col - 1];
-
-    //    int row1  = (WallID[col + 1] / 2) / mapWidth;
-    //    int row_1 = (WallID[col - 1] / 2) / mapWidth;
-    //    int col1  = (WallID[col + 1] / 2) % mapWidth;
-    //    int col_1 = (WallID[col - 1] / 2) % mapWidth;
-    //    if ((WallID[col] / 2 != WallID[col + 1] / 2) && (abs(row1 - row_1) <= 1 || abs(col1 - col_1) <= 1))
-    //        WallID[col] = WallID[col - 1];
-    //}
 
     //decide border
     int drawnPrevBorder = 0;
@@ -288,8 +277,7 @@ void Render() {
             drawnPrevBorder = 0; //*s just drawn for the prev column
         else
             if ((col < screenW - 1) && (WallID[col] != WallID[col + 1]) && (H[col] >= H[col + 1]) || //next in background
-                (col > 0) && (WallID[col] != WallID[col - 1]) && (H[col] >= H[col - 1])) //prev in background
-            {
+                (col > 0) && (WallID[col] != WallID[col - 1]) && (H[col] >= H[col - 1])) { //prev in background
                 TextureColumn[col] = -1; //render the last border of curr cube with '*'
                 drawnPrevBorder = 1;
             }
@@ -349,7 +337,11 @@ void Render() {
         wchar_t scr[screenW];
         for (int col = 0; col < screenW; col++) //convert to wchar_t
             scr[col] = screen[line][col];
-        WriteConsoleOutputCharacter(hConsole, (wchar_t*)scr, screenW, { 0, (short)line }, &dwBytesWritten);
+#ifdef CODEBLOCKS
+        WriteConsoleOutputCharacter(hConsole, (const char*)screen[line], screenW, {0, (short)line}, &dwBytesWritten);
+#else
+        WriteConsoleOutputCharacter(hConsole, (wchar_t*)scr, screenW, {0, (short)line}, &dwBytesWritten);
+#endif
     }
     Sleep(20); //it's far too fast :)
 #else
@@ -361,8 +353,10 @@ void Render() {
 
 int main()
 {
-    if (!init())
+    if (!init()) {
+        _getch();
         return 0;
+    }
 
     Render();
     while (1) {

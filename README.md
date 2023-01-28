@@ -10,10 +10,12 @@ Prepared to be opened with:
 How to control the viewer:
 - A, S, D, W: to move forward/backward and strafe left/right
 - Left arrow, right arrow: to rotate left/right
+- E, C: jump, crunch
 
 Some design aims:
 - use texture on walls, as opposed to many other similar implementations
 - try to avoid using FPU (many devices work faster with integers; some devices have no FPU - you need workarounds with integers/LUTs/etc)
+- don't sacrifice performance in favor of simpler implementation
 - try using standard libraries only (aiming for cross IDE, cross platform)
 - no extended ASCII chars as sometimes they are not really standard
 - no colors as not all consoles support colors
