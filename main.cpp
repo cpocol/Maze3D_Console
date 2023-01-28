@@ -22,13 +22,13 @@ int H[screenW], WallID[screenW], TextureColumn[screenW];
 fptype Tan_fp[around]; //fp bits fixed point
 fptype CTan_fp[around];
 
-//initial viewer Current position, orientation and elevation_perc
+//viewer Current position, orientation and elevation_perc
 int xC = xInit;
 int yC = yInit;
 int angleC = angleInit;
 int elevation_perc = 0; //as percentage from wall half height
 
-int showMap = 0;
+int showMap = 1;
 
 HANDLE hConsole;
 
@@ -61,7 +61,7 @@ bool init() {
     }
 
     //load texture
-    FILE* pF = fopen("diamond.txt", "r");
+    FILE* pF = fopen("Zerg.txt", "r");
     if (!pF) {
         printf("Texture file can't be opened\n");
         return false;
@@ -261,6 +261,11 @@ void Render() {
         WallID[col] = Cast(ang, xHit, yHit);
 
         TextureColumn[col] = ((xHit + yHit) % sqRes) * texRes / sqRes;
+
+        if ((WallID[col] % 2 == 1) && (ang < aroundh) ||
+            (WallID[col] % 2 == 0) && ((aroundq < ang) && (ang < around3q)))
+            TextureColumn[col] = texRes - TextureColumn[col]; //mirror texture the right way
+
         int dist_sq = sq(xC - xHit) + sq(yC - yHit) + 1; //+1 avoids division by zero
         H[col] = int(sqRes * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
     }
@@ -358,11 +363,9 @@ int main()
         return 0;
     }
 
-    Render();
-    while (1) {
+    while (1)
         if (loopController(xC, yC, angleC, around))
            Render();
-    }
 
     return 0;
 }

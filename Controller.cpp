@@ -33,19 +33,16 @@ void move(int& x, int& y, int angle) {
 
     int xWall, yWall;
     int wallID = Cast(angle, xWall, yWall);
-    if (sq(x - xTest) + sq(y - yTest) >= sq(x - xWall) + sq(y - yWall))
-    { //inside wall
-        if (wallID % 2 == 0) //vertical wall ||
-        {
+    if (sq(x - xTest) + sq(y - yTest) >= sq(x - xWall) + sq(y - yWall)) { //inside wall
+        if (wallID % 2 == 0) { //vertical wall ||
             x = xWall + safetyX;
-            y = yTest;                                      //               __
+            y = yTest;                          //               __
             if (Map[y / sqRes][x / sqRes] != 0) //it's a corner |
                 y = (yTest / sqRes - adjYMap) * sqRes + safetyY;
         }
-        else //horizontal wall ==
-        {
+        else { //horizontal wall ==
             x = xTest;
-            y = yWall + safetyY;                            //               __
+            y = yWall + safetyY;                //               __
             if (Map[y / sqRes][x / sqRes] != 0) //it's a corner |
                 x = (xTest / sqRes - adjXMap) * sqRes + safetyX;
         }
@@ -58,7 +55,7 @@ void rotate(int& angle, int dir, int around) {
     angle = (angle + dir * ROTATE_SPD + around) % around;
 }
 
-void initController() {
+int initController() {
     float fDist = 0, fSpeed = 0, G = 8000.f * sqRes / 200; //G was empirically chosen as we don't have a proper world scale here
     for (int i = 0; i < 200; i++) {
         acceleratedMotion[i] = (int)fDist;
@@ -75,9 +72,17 @@ void initController() {
     if (maxJump_idx >= 200) maxJump_idx = 199;
 
     elevation_perc = 100 * z / sqResh; //as percentage from wall half height
+
+    return 0;
 }
 
 int loopController(int& x, int& y, int& angle, int around) {
+    static int firstTime = 1;
+    if (firstTime) {
+        firstTime = 0;
+        return 1; //render first frame
+    }
+
     int sign = 1;
 #ifdef INVERT_COORDINATE_SYSTEM
     sign = -1;
