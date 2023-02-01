@@ -28,7 +28,7 @@ int yC = yInit;
 int angleC = angleInit;
 int elevation_perc = 0; //as percentage from wall half height
 
-int showMap = 1;
+int showMap = 0;
 
 HANDLE hConsole;
 
@@ -61,7 +61,7 @@ bool init() {
     }
 
     //load texture
-    FILE* pF = fopen("Zerg.txt", "r");
+    FILE* pF = fopen("diamond.txt", "r");
     if (!pF) {
         printf("Texture file can't be opened\n");
         return false;
@@ -129,7 +129,7 @@ void renderMap() {
 }
 
 //returns wall ID (as map position and cell face)
-int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit vertical walls ||
+int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp, int xFloor[], int yFloor[], int& hitsFloor) { //hit vertical walls ||
     if ((angle == aroundq) || (angle == around3q))
         return -1; //CastY() will hit a wall correctly
 
@@ -148,6 +148,8 @@ int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit vertical walls
 
     while ((0 < x) && (x < mapSizeWidth) && (0 < yHit_fp) && (yHit_fp < mapSizeHeight_fp) &&
            (Map[(yHit_fp >> fp) / sqRes][x / sqRes + adjXMap] == 0)) {
+        //xFloor[hitsFloor  ] = x;
+        //yFloor[hitsFloor++] = yHit_fp >> fp;
         x += dx;
         yHit_fp += dy_fp;
     }
@@ -158,7 +160,7 @@ int CastX(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit vertical walls
 }
 
 //returns wall ID (as map position and cell face)
-int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal walls ==
+int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp, int xFloor[], int yFloor[], int& hitsFloor) { //hit horizontal walls ==
     if ((angle == 0) || (angle == aroundh))
         return -1; //CastX() will hit a wall correctly
 
@@ -176,6 +178,8 @@ int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal wal
 
     while ((0 < xHit_fp) && (xHit_fp < mapSizeWidth_fp) && (0 < y) && (y < mapSizeHeight) &&
            (Map[y / sqRes + adjYMap][(xHit_fp >> fp) / sqRes] == 0)) {
+        xFloor[hitsFloor  ] = xHit_fp >> fp;
+        yFloor[hitsFloor++] = y;
         xHit_fp += dx_fp;
         y += dy;
     }
@@ -186,10 +190,10 @@ int CastY(int angle, fptype& xHit_fp, fptype& yHit_fp) { //   hit horizontal wal
 }
 
 //returns wall ID (as map position and cell face)
-int Cast(int angle, int& xHit, int& yHit) {
+int Cast(int angle, int& xHit, int& yHit, int xFloor[], int yFloor[], int& hitsFloor) {
     fptype xX_fp = 1000000000, yX_fp = xX_fp, xY_fp = xX_fp, yY_fp = xX_fp;
-    int wallIDX = CastX(angle, xX_fp, yX_fp);
-    int wallIDY = CastY(angle, xY_fp, yY_fp);
+    int wallIDX = CastX(angle, xX_fp, yX_fp, xFloor, yFloor, hitsFloor);
+    int wallIDY = CastY(angle, xY_fp, yY_fp, xFloor, yFloor, hitsFloor);
     //choose the nearest hit point
     if (llabs(((fptype)xC << fp) - xX_fp) < llabs(((fptype)xC << fp) - xY_fp)) { //vertical wall ||
         xHit = int(xX_fp >> fp);
@@ -211,9 +215,8 @@ void PrintVerticalText(int col, int row, char text[]) {
 
 void RenderColumn(int col, int h, int textureColumn) {
 //makes sure the borders are always drawn - it improves the "contrast" if rendered in console
-    int Dh_fp = (texRes << 22) / h; //1 row in screen space is this many rows in texture space; use fixed point
-    int textureRow_fp = 0;
-    int a = 0;
+    __int32 Dh_fp = (texRes << 22) / h; //1 row in screen space is this many rows in texture space; use fixed point
+    __int32 textureRow_fp = 0;
     //int minRow = screenHh - h / 2;
     int minRow = ((100 - elevation_perc) * (2 * screenHh - h) / 2 + elevation_perc * screenHh) / 100;
     int maxRow = min(minRow + h, screenH);
@@ -221,7 +224,6 @@ void RenderColumn(int col, int h, int textureColumn) {
     int minRowOrig = minRow;
     if (minRow < 0) { //clip
         textureRow_fp = -(minRow * Dh_fp);
-        a = textureRow_fp >> 22;
         minRow = 0;
     }
 
@@ -250,6 +252,18 @@ void RenderColumn(int col, int h, int textureColumn) {
     //PrintVerticalText(col, minRow, str);
 }
 
+void RenderFloor(int col, int xFloor[], int yFloor[], int hitsFloor) {
+    const int viewerToScreen_sq = sq(screenWh) * 3; //FOV = 60 degs => viewerToScreen = screenWh * sqrt(3)
+    for (int i = 0; i < hitsFloor; i++) {
+        int dist_sq = sq(xC - xFloor[i]) + sq(yC - yFloor[i]) + 1; //+1 avoids division by zero
+        int h = int(sqRes * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
+        int row = screenHh + h / 2;
+        //int row = ((100 - elevation_perc) * (2 * screenHh + h) / 2 + elevation_perc * screenHh) / 100;
+        if (row < screenH)
+            screen[row][col] = '.';
+    }
+}
+
 void Render() {
     memset(screen, ' ', sizeof(screen));
 
@@ -258,7 +272,9 @@ void Render() {
     for (int col = 0; col < screenW; col++) {
         int ang = (screenWh - col + angleC + around) % around;
         int xHit, yHit;
-        WallID[col] = Cast(ang, xHit, yHit);
+        int xFloor[1000], yFloor[1000], hitsFloor = 0;
+        WallID[col] = Cast(ang, xHit, yHit, xFloor, yFloor, hitsFloor);
+        RenderFloor(col, xFloor, yFloor, hitsFloor);
 
         TextureColumn[col] = ((xHit + yHit) % sqRes) * texRes / sqRes;
 
@@ -308,7 +324,7 @@ void Render() {
     for (int row = 0; row < screenH; row++)
         for (int col = 0; col < screenW; col++) {
             if ((screen[row][col] == 0) || (screen[row][col] == 10) || (screen[row][col] == 13)
-                || (screen[row][col] == ' ') || (screen[row][col] == '*'))
+                || (screen[row][col] == ' ') || (screen[row][col] == '*') || (screen[row][col] == '.'))
                 continue;
             screen[row][col] = 'O';
         }

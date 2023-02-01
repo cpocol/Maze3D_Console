@@ -32,7 +32,8 @@ void move(int& x, int& y, int angle) {
     int adjYMap = (angle > aroundh) ? -1 : 0;
 
     int xWall, yWall;
-    int wallID = Cast(angle, xWall, yWall);
+    int xHits[1000], yHits[1000], hits = 0;
+    int wallID = Cast(angle, xWall, yWall, xHits, yHits, hits);
     if (sq(x - xTest) + sq(y - yTest) >= sq(x - xWall) + sq(y - yWall)) { //inside wall
         if (wallID % 2 == 0) { //vertical wall ||
             x = xWall + safetyX;

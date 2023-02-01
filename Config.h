@@ -8,7 +8,7 @@
 #define ROTATE_SPD 4
 #define VERTICAL_SPD (sqRes/25)
 
-//(number of bits for sqRes (= texture size)) + fp + (1 bit for sign) + X <= bits of fptype
+//bits of fptype >= (number of bits for sqRes) + fp + (1 bit for sign) + X
 //where X = max((number of bits for mapSize), (number of bits for the integral part of tan/ctan))
 
 const int fp = 14; //fixed point position
