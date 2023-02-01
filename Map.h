@@ -21,4 +21,3 @@ const int Map[][14] = {
 
 const int mapWidth = sizeof(Map[0])/sizeof(Map[0][0]);
 const int mapHeight = sizeof(Map)/sizeof(Map[0]);
-

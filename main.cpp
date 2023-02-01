@@ -61,7 +61,7 @@ bool init() {
     }
 
     //load texture
-    FILE* pF = fopen("Zerg.txt", "r");
+    FILE* pF = fopen("diamond.txt", "r");
     if (!pF) {
         printf("Texture file can't be opened\n");
         return false;
@@ -213,7 +213,6 @@ void RenderColumn(int col, int h, int textureColumn) {
 //makes sure the borders are always drawn - it improves the "contrast" if rendered in console
     int Dh_fp = (texRes << 22) / h; //1 row in screen space is this many rows in texture space; use fixed point
     int textureRow_fp = 0;
-    int a = 0;
     //int minRow = screenHh - h / 2;
     int minRow = ((100 - elevation_perc) * (2 * screenHh - h) / 2 + elevation_perc * screenHh) / 100;
     int maxRow = min(minRow + h, screenH);
@@ -221,7 +220,6 @@ void RenderColumn(int col, int h, int textureColumn) {
     int minRowOrig = minRow;
     if (minRow < 0) { //clip
         textureRow_fp = -(minRow * Dh_fp);
-        a = textureRow_fp >> 22;
         minRow = 0;
     }
 
