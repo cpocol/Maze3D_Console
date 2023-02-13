@@ -1,5 +1,5 @@
-# Maze3D_Console (ray casting)
-3D rendering in console:
+# Maze3D_Console (ray casting - same as Wolfenstein 3D)
+3D rendering in console/command prompt/ASCII:
 
 ![Snapshot](/Snapshot.png)
 

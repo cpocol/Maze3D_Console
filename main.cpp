@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <windows.h>
 
 #include "Config.h"
@@ -16,7 +17,7 @@
 const int mapSizeHeight = mapHeight * sqRes, mapSizeWidth = mapWidth * sqRes;
 const fptype mapSizeWidth_fp = (((fptype)mapSizeWidth) << fp), mapSizeHeight_fp = (((fptype)mapSizeHeight) << fp);
 char screen[screenH][screenW + 1] = {{0}}; //we'll paint everything in this matrix, then flush it onto the real screen
-char Texture[texRes*texRes];
+char Texture[texRes * texRes];
 int H[screenW], WallID[screenW], TextureColumn[screenW];
 
 fptype Tan_fp[around]; //fp bits fixed point
@@ -37,6 +38,8 @@ float X2Rad(int X) {
 }
 
 bool init() {
+	SetConsoleTitle(L"Maze 3D in console");
+
     int i, j;
     //precalculate
     for (int a = 0; a < around; a++) {
@@ -86,8 +89,13 @@ bool init() {
     }
 
 #ifdef ACCESS_CONSOLE_DIRECTLY
-    hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    //programmatically set screen buffer size and window size
+	SetConsoleScreenBufferSize(hConsole, {(short)screenW, (short)screenH});
     SetConsoleActiveScreenBuffer(hConsole);
+	SMALL_RECT rectWindow = {0, 0, (short)screenW - 1, (short)screenH - 1};
+	SetConsoleWindowInfo(hConsole, TRUE, &rectWindow);
 #endif
 
     initController();
@@ -203,6 +211,12 @@ int Cast(int angle, int& xHit, int& yHit) {
     }
 }
 
+void PrintHorizontalText(int col, int row, char text[]) {
+   for (int c = col; c < col + (int)strlen(text); c++)
+       if (0 <= row && row < screenH && 0 <= c && c < screenW)
+           screen[row][c] = text[c - col];
+}
+
 void PrintVerticalText(int col, int row, char text[]) {
    for (int r = row; r < row + (int)strlen(text); r++)
        if (0 <= r && r < screenH && 0 <= col && col < screenW)
@@ -215,13 +229,17 @@ void RenderColumn(int col, int h, int textureColumn) {
     int textureRow_fp = 0;
     //int minRow = screenHh - h / 2;
     int minRow = ((100 - elevation_perc) * (2 * screenHh - h) / 2 + elevation_perc * screenHh) / 100;
-    int maxRow = min(minRow + h, screenH);
-
     int minRowOrig = minRow;
+    int maxRow = minRow + h;
+    int maxRowOrig = maxRow;
+
     if (minRow < 0) { //clip
         textureRow_fp = -(minRow * Dh_fp);
         minRow = 0;
     }
+
+    if (maxRow > screenH) //clip
+        maxRow = screenH;
 
     if (minRowOrig >= 0) { //top border visible
         if (minRow < screenH)
@@ -238,8 +256,8 @@ void RenderColumn(int col, int h, int textureColumn) {
         textureRow_fp += Dh_fp;
     }
 
-    if (maxRow < screenH) //bottom border visible
-        screen[maxRow][col] = '*';
+    if (maxRowOrig < screenH) //bottom border visible
+        screen[maxRowOrig][col] = '*';
 
     //display debugging info
     char str[100];
@@ -249,6 +267,7 @@ void RenderColumn(int col, int h, int textureColumn) {
 }
 
 void Render() {
+    auto time1 = clock();
     memset(screen, ' ', sizeof(screen));
 
     ///pass 1: do the ray casting and store results
@@ -333,17 +352,22 @@ void Render() {
     if (showMap)
         renderMap();
 
+    //measure rendering time
+    char str[100];
+    sprintf(str, "%.f ms ", float(clock() - time1) / CLOCKS_PER_SEC * 1000);
+    PrintHorizontalText(screenW - 10, 0, str);
+
     //flush the screen matrix onto the real screen
 #ifdef ACCESS_CONSOLE_DIRECTLY
     DWORD dwBytesWritten;
-    for (int line = 0; line < screenH; line++) {
+    for (int row = 0; row < screenH; row++) {
         wchar_t scr[screenW];
         for (int col = 0; col < screenW; col++) //convert to wchar_t
-            scr[col] = screen[line][col];
+            scr[col] = screen[row][col];
 #ifdef CODEBLOCKS
-        WriteConsoleOutputCharacter(hConsole, (const char*)screen[line], screenW, {0, (short)line}, &dwBytesWritten);
+        WriteConsoleOutputCharacter(hConsole, (const char*)screen[row], screenW, {0, (short)row}, &dwBytesWritten);
 #else
-        WriteConsoleOutputCharacter(hConsole, (wchar_t*)scr, screenW, {0, (short)line}, &dwBytesWritten);
+        WriteConsoleOutputCharacter(hConsole, (wchar_t*)scr, screenW, {0, (short)row}, &dwBytesWritten);
 #endif
     }
     Sleep(20); //it's far too fast :)
@@ -361,9 +385,15 @@ int main()
         return 0;
     }
 
-    while (1)
-        if (loopController(xC, yC, angleC, around))
+    while (1) {
+        int cmd = loopController(xC, yC, angleC, around);
+        if (cmd > 0)
            Render();
+        if (cmd < 0)
+           break;
+    }
+
+    CloseHandle(hConsole);
 
     return 0;
 }
