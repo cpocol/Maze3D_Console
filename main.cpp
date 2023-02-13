@@ -38,7 +38,7 @@ float X2Rad(int X) {
 }
 
 bool init() {
-	SetConsoleTitle(L"Maze 3D in console");
+    SetConsoleTitle(L"Maze 3D in console");
 
     int i, j;
     //precalculate
@@ -92,10 +92,10 @@ bool init() {
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
     //programmatically set screen buffer size and window size
-	SetConsoleScreenBufferSize(hConsole, {(short)screenW, (short)screenH});
+    SetConsoleScreenBufferSize(hConsole, {(short)screenW, (short)screenH});
     SetConsoleActiveScreenBuffer(hConsole);
-	SMALL_RECT rectWindow = {0, 0, (short)screenW - 1, (short)screenH - 1};
-	SetConsoleWindowInfo(hConsole, TRUE, &rectWindow);
+    SMALL_RECT rectWindow = {0, 0, (short)screenW - 1, (short)screenH - 1};
+    SetConsoleWindowInfo(hConsole, TRUE, &rectWindow);
 #endif
 
     initController();
@@ -227,8 +227,7 @@ void RenderColumn(int col, int h, int textureColumn) {
 //makes sure the borders are always drawn - it improves the "contrast" if rendered in console
     int Dh_fp = (texRes << 22) / h; //1 row in screen space is this many rows in texture space; use fixed point
     int textureRow_fp = 0;
-    //int minRow = screenHh - h / 2;
-    int minRow = ((100 - elevation_perc) * (2 * screenHh - h) / 2 + elevation_perc * screenHh) / 100;
+    int minRow = ((100 - elevation_perc) * (screenH - h) / 2 + elevation_perc * screenHh) / 100; //no elev: minRow = screenHh - h / 2
     int minRowOrig = minRow;
     int maxRow = minRow + h;
     int maxRowOrig = maxRow;

@@ -45,8 +45,8 @@ int initController() {
     elevation_perc = 100 * zC / sqResh; //as percentage from wall half height
 
     //init mouse input
-	hIn = GetStdHandle(STD_INPUT_HANDLE);
-	SetConsoleMode(hIn, ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
+    hIn = GetStdHandle(STD_INPUT_HANDLE);
+    SetConsoleMode(hIn, ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
 
     wchar_t windowTitle[1000];
     GetConsoleTitle(windowTitle, 1000);
@@ -54,8 +54,8 @@ int initController() {
 
     //set cursor to a reference position
     POINT mousePoint = {refMousePosX, refMousePosY};
-	ClientToScreen(hWnd, &mousePoint);
-	SetCursorPos(mousePoint.x, mousePoint.y);
+    ClientToScreen(hWnd, &mousePoint);
+    SetCursorPos(mousePoint.x, mousePoint.y);
 
     return 0;
 }
@@ -118,13 +118,13 @@ int loopController(int& x, int& y, int& angle, int around) {
 
     for (DWORD i = 0; i < RecordsRead; i++) {
         if (InputRecord[i].EventType == FOCUS_EVENT) {
-    		wndHasFocus = InputRecord[i].Event.FocusEvent.bSetFocus;
+            wndHasFocus = InputRecord[i].Event.FocusEvent.bSetFocus;
         }
         if (InputRecord[i].EventType == MOUSE_EVENT) {
             if(InputRecord[i].Event.MouseEvent.dwEventFlags == MOUSE_MOVED) {
-				//int mousePosX = InputRecord[i].Event.MouseEvent.dwMousePosition.X; //char level accuracy
+                //int mousePosX = InputRecord[i].Event.MouseEvent.dwMousePosition.X; //char level accuracy
                 POINT mousePoint;
-	            GetCursorPos(&mousePoint);
+                GetCursorPos(&mousePoint);
                 ScreenToClient(hWnd, &mousePoint);
                 int mousePosX = mousePoint.x; //get pixel level accuracy
 
@@ -132,8 +132,8 @@ int loopController(int& x, int& y, int& angle, int around) {
 
                 //reset cursor to the reference position
                 POINT refMousePoint = {refMousePosX, refMousePosY};
-	            ClientToScreen(hWnd, &refMousePoint);
-	            SetCursorPos(refMousePoint.x, refMousePoint.y);
+                ClientToScreen(hWnd, &refMousePoint);
+                SetCursorPos(refMousePoint.x, refMousePoint.y);
 
                 did = 1;
             }
