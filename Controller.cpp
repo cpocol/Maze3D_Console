@@ -11,8 +11,10 @@
 HANDLE hin;
 
 void initController() {
-     hin = GetStdHandle(STD_INPUT_HANDLE);
-     SetConsoleMode(hin, ENABLE_PROCESSED_INPUT | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
+    //https://www.youtube.com/watch?v=tdqc9hZhHxM
+    hin = GetStdHandle(STD_INPUT_HANDLE);
+    if (!SetConsoleMode(hin, ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT))
+        int a = 0;
 }
 
 void doPedal(int& x, int& y, int angle) {
@@ -110,8 +112,10 @@ int loopController(int& x, int& y, int& angle, int around) {
 
         //check the mouse
         INPUT_RECORD InputRecord[128];
-        DWORD RecordsRead;
-        ReadConsoleInput(hin, InputRecord, 128, &RecordsRead);
+        DWORD RecordsRead = 0;
+        GetNumberOfConsoleInputEvents(hin, &RecordsRead);
+        if (RecordsRead > 0)
+            ReadConsoleInput(hin, InputRecord, RecordsRead, &RecordsRead);
         for (int i = 0; i < RecordsRead; i++) {
             //if (InputRecord[0].EventType != FOCUS_EVENT) {
             if (InputRecord[0].EventType == MOUSE_EVENT) {
