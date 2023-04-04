@@ -1,7 +1,7 @@
 # Maze3D_Console (ray casting - same as Wolfenstein 3D)
 3D rendering in console/command prompt/ASCII:
 
-![Snapshot](/Snapshot.png)
+![Snapshot](/Snapshot.gif)
 
 Prepared to be opened with:
 - MS Visual Studio

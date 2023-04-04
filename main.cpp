@@ -29,7 +29,7 @@ int yC = yInit;
 int angleC = angleInit;
 int elevation_perc = 0; //as percentage from wall half height
 
-int showMap = 1;
+int showMap = 0;
 
 HANDLE hStdOutput;
 
