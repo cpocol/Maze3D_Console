@@ -20,7 +20,7 @@ int jumping = 0, crunching = 0;
 int zC = 0; //same unit as sqRes
 static clock_t keyTime = clock();
 
-HANDLE hIn;
+HANDLE hStdInput;
 HWND hWnd;
 bool wndHasFocus = true;
 //mouse cursor reference position
@@ -45,8 +45,8 @@ int initController() {
     elevation_perc = 100 * zC / sqResh; //as percentage from wall half height
 
     //init mouse input
-    hIn = GetStdHandle(STD_INPUT_HANDLE);
-    SetConsoleMode(hIn, ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
+    hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    SetConsoleMode(hStdInput, ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
 
     wchar_t windowTitle[1000];
     GetConsoleTitleW(windowTitle, 1000);
@@ -112,9 +112,9 @@ int loopController(int& x, int& y, int& angle, int around) {
     //check the mouse (and focus)
     INPUT_RECORD InputRecord[128];
     DWORD RecordsRead = 0;
-    GetNumberOfConsoleInputEvents(hIn, &RecordsRead);
+    GetNumberOfConsoleInputEvents(hStdInput, &RecordsRead);
     if (RecordsRead > 0)
-        ReadConsoleInput(hIn, InputRecord, RecordsRead, &RecordsRead);
+        ReadConsoleInput(hStdInput, InputRecord, RecordsRead, &RecordsRead);
 
     for (DWORD i = 0; i < RecordsRead; i++) {
         if (InputRecord[i].EventType == FOCUS_EVENT) {

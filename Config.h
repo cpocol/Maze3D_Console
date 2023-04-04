@@ -2,7 +2,7 @@
 
 #define INVERT_COORDINATE_SYSTEM //we need this because the map's CS is left handed while the ray casting works right handed
 #define USE_MULTIPLE_KEYS_SIMULTANEOUSLY
-#define ACCESS_CONSOLE_DIRECTLY //avoids flickering
+#define ACCESS_STD_OUTPUT_DIRECTLY //avoids flickering
 
 #define MOVE_SPD (10 * sqRes / 100)
 #define ROTATE_SPD 4

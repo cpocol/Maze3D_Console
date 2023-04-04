@@ -31,7 +31,7 @@ int elevation_perc = 0; //as percentage from wall half height
 
 int showMap = 1;
 
-HANDLE hConsole;
+HANDLE hStdOutput;
 
 float X2Rad(int X) {
     return X * 3.1415f / aroundh;
@@ -88,14 +88,17 @@ bool init() {
         memcpy(Texture + i*texRes, str, texRes);
     }
 
-#ifdef ACCESS_CONSOLE_DIRECTLY
-    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+#ifdef ACCESS_STD_OUTPUT_DIRECTLY
+    hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 
     //programmatically set screen buffer size and window size
-    SetConsoleScreenBufferSize(hConsole, {(short)screenW, (short)screenH});
-    SetConsoleActiveScreenBuffer(hConsole);
+    SetConsoleScreenBufferSize(hStdOutput, {(short)screenW, (short)screenH});
+    SetConsoleActiveScreenBuffer(hStdOutput);
     SMALL_RECT rectWindow = {0, 0, (short)screenW - 1, (short)screenH - 1};
-    SetConsoleWindowInfo(hConsole, TRUE, &rectWindow);
+    SetConsoleWindowInfo(hStdOutput, TRUE, &rectWindow);
+
+    COORD pos = {12, screenH - 1};
+    SetConsoleCursorPosition(hStdOutput, pos);
 #endif
 
     initController();
@@ -266,7 +269,7 @@ void RenderColumn(int col, int h, int textureColumn) {
 }
 
 void Render() {
-    auto time1 = clock();
+    auto time_ms = (float)clock() / CLOCKS_PER_SEC * 1000;
     memset(screen, ' ', sizeof(screen));
 
     ///pass 1: do the ray casting and store results
@@ -352,12 +355,16 @@ void Render() {
         renderMap();
 
     //measure rendering time
-    char str[100];
-    sprintf(str, "%.f ms ", float(clock() - time1) / CLOCKS_PER_SEC * 1000);
+    char str[screenW + 2];
+    sprintf(str, "%.f ms ", (float)clock() / CLOCKS_PER_SEC * 1000 - time_ms);
     PrintHorizontalText(screenW - 10, 0, str);
 
+    //make it look more like a commnand prompt window
+    sprintf(str, "%-*s", screenW, R"(C:\Users\cp>)");
+    PrintHorizontalText(0, screenH - 1, str);
+
     //flush the screen matrix onto the real screen
-#ifdef ACCESS_CONSOLE_DIRECTLY
+#ifdef ACCESS_STD_OUTPUT_DIRECTLY
     DWORD dwBytesWritten;
     for (int row = 0; row < screenH; row++) {
         wchar_t scr[screenW];
@@ -366,9 +373,10 @@ void Render() {
 #ifdef CODEBLOCKS
         WriteConsoleOutputCharacter(hConsole, (const char*)screen[row], screenW, {0, (short)row}, &dwBytesWritten);
 #else
-        WriteConsoleOutputCharacter(hConsole, (wchar_t*)scr, screenW, {0, (short)row}, &dwBytesWritten);
+        WriteConsoleOutputCharacter(hStdOutput, (wchar_t*)scr, screenW, {0, (short)row}, &dwBytesWritten);
 #endif
     }
+
     Sleep(20); //it's far too fast :)
 #else
     screen[screenH - 1][screenW - 1] = 0; //avoid scrolling one row up when the screen is full
@@ -392,7 +400,7 @@ int main()
            break;
     }
 
-    CloseHandle(hConsole);
+    CloseHandle(hStdOutput);
 
     return 0;
 }
