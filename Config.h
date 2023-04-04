@@ -14,7 +14,7 @@
 const int fp = 14; //fixed point position
 typedef __int32 fptype;
 
-const int screenW = 80, screenH = 25, screenWh = screenW / 2, screenHh = screenH / 2;
+const int screenW = 142, screenH = 40, screenWh = screenW / 2, screenHh = screenH / 2;
 const int around = 6 * screenW, aroundh = around / 2, aroundq = around / 4, around3q = 3 * aroundq; //FOV = 60 degs (6 FOVs = 360 degrees)
 
 const int sqRes = (1 << 10), sqResh = sqRes / 2;

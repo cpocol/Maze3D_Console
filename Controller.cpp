@@ -49,8 +49,8 @@ int initController() {
     SetConsoleMode(hIn, ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT);
 
     wchar_t windowTitle[1000];
-    GetConsoleTitle(windowTitle, 1000);
-    hWnd = FindWindow(NULL, windowTitle);
+    GetConsoleTitleW(windowTitle, 1000);
+    hWnd = FindWindowW(NULL, windowTitle);
 
     //set cursor to a reference position
     POINT mousePoint = {refMousePosX, refMousePosY};
@@ -139,7 +139,7 @@ int loopController(int& x, int& y, int& angle, int around) {
             }
         }
     }
-        
+
     if (!wndHasFocus)
         return 0;
 
@@ -237,7 +237,7 @@ int loopController(int& x, int& y, int& angle, int around) {
             }
             did = 1;
         }
-        
+
         elevation_perc = 100 * zC / sqResh; //as percentage from wall half height
 
 #ifdef USE_MULTIPLE_KEYS_SIMULTANEOUSLY

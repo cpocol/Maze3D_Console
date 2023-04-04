@@ -38,7 +38,7 @@ float X2Rad(int X) {
 }
 
 bool init() {
-    SetConsoleTitle(L"Maze 3D in console");
+    SetConsoleTitleW(L"Maze 3D in console");
 
     int i, j;
     //precalculate
