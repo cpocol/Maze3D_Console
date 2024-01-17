@@ -283,7 +283,7 @@ void Render() {
 
         if ((WallID[col] % 2 == 1) && (ang < aroundh) ||
             (WallID[col] % 2 == 0) && ((aroundq < ang) && (ang < around3q)))
-            TextureColumn[col] = texRes - TextureColumn[col]; //mirror texture the right way
+            TextureColumn[col] = texRes - 1 - TextureColumn[col]; //mirror texture the right way
 
         int dist_sq = sq(xC - xHit) + sq(yC - yHit) + 1; //+1 avoids division by zero
         H[col] = int(sqRes * sqrt((viewerToScreen_sq + sq(screenWh - col)) / (float)dist_sq) + 0.5);
@@ -371,7 +371,7 @@ void Render() {
         for (int col = 0; col < screenW; col++) //convert to wchar_t
             scr[col] = screen[row][col];
 #ifdef CODEBLOCKS
-        WriteConsoleOutputCharacter(hConsole, (const char*)screen[row], screenW, {0, (short)row}, &dwBytesWritten);
+        WriteConsoleOutputCharacter(hStdOutput, (const char*)screen[row], screenW, {0, (short)row}, &dwBytesWritten);
 #else
         WriteConsoleOutputCharacter(hStdOutput, (wchar_t*)scr, screenW, {0, (short)row}, &dwBytesWritten);
 #endif
