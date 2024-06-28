@@ -26,3 +26,5 @@ Some design aims:
     - anti-aliasing with smaller chars at texture edges
 	
 (handling key pressing is implemented for Windows only so far)
+
+Video demo available at: https://youtu.be/--LiD7QNHNY
